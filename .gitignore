@@ -22,6 +22,7 @@ Thumbs.db
 *.crt
 proxy/certs/*
 !proxy/certs/.gitkeep
+.agents/*
 
 # ==========================================
 # Node.js & Package Managers
