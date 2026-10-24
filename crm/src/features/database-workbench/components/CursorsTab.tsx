@@ -26,7 +26,7 @@ export const CursorsTab: React.FC = () => {
         setSelectedCursor(list[0].id);
       }
     } catch (err) {
-      console.error('Failed to load cursors catalog', err);
+      console.error('Lỗi khi tải danh mục con trỏ', err);
     }
   };
 
@@ -46,8 +46,8 @@ export const CursorsTab: React.FC = () => {
       }
       setExecutionResult(res);
     } catch (err: any) {
-      console.error('Cursor execution error', err);
-      setErrorMessage(err.message || 'Error executing cursor routine');
+      console.error('Lỗi thực thi con trỏ', err);
+      setErrorMessage(err.message || 'Lỗi phát sinh trong quá trình duyệt con trỏ');
     } finally {
       setExecuting(false);
     }
@@ -55,7 +55,7 @@ export const CursorsTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Cursor selection cards */}
+      {/* Thẻ chọn con trỏ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {catalog.map((cur) => {
           const isSelected = cur.id === selectedCursor;
@@ -80,45 +80,44 @@ export const CursorsTab: React.FC = () => {
                 <span className="text-xs font-mono text-stone-500 font-bold">{cur.sqlName}</span>
               </div>
               <div className="font-bold text-sm text-stone-900 mt-2">{cur.name}</div>
-              <div className="text-xs font-mono text-indigo-700 mt-1">Cursor: {cur.cursorName}</div>
+              <div className="text-xs font-mono text-indigo-700 mt-1 font-semibold">Khai báo: {cur.cursorName}</div>
               <p className="text-xs text-stone-600 mt-2 leading-relaxed">{cur.description}</p>
             </button>
           );
         })}
       </div>
 
-      {/* Main Execution Workbench */}
+      {/* Bảng làm việc chính */}
       {currentCursorItem && (
         <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-xs space-y-6">
           {/* Header */}
           <div className="pb-4 border-b border-stone-100">
             <div className="flex items-center gap-2">
               <span className="text-lg font-extrabold text-stone-900">{currentCursorItem.name}</span>
-              <span className="font-mono text-xs px-2 py-0.5 rounded bg-cyan-100 text-cyan-800">
+              <span className="font-mono text-xs px-2 py-0.5 rounded bg-cyan-100 text-cyan-800 font-bold">
                 {currentCursorItem.cursorName}
               </span>
             </div>
             <p className="text-xs text-stone-600 mt-1">{currentCursorItem.description}</p>
           </div>
 
-          {/* Form */}
+          {/* Form tùy chọn */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
-              Cursor Execution Options
+              Tùy Chọn Thực Thi Con Trỏ (Cursor Execution Options)
             </h4>
 
             {selectedCursor === 'sp_audit_invoices' ? (
-              <div className="p-4 rounded-xl border border-stone-200 bg-stone-50 flex items-center justify-between">
+              <div className="p-4 rounded-xl border border-stone-200 bg-stone-50 flex items-center justify-between gap-4">
                 <div>
                   <div className="text-xs font-bold text-stone-900">
-                    Enable Auto-Fix Reconciliation (@auto_fix = 1)
+                    Bật chế độ tự động đồng bộ đối soát (@auto_fix = 1)
                   </div>
                   <p className="text-[11px] text-stone-500 mt-0.5">
-                    When enabled, any invoice where stored total_amount does not match (labor + parts -
-                    discount) will be automatically updated by the cursor.
+                    Nếu bật, con trỏ khi duyệt gặp hóa đơn có total_amount không khớp với (tiền công + linh kiện - chiết khấu) sẽ tự động UPDATE đồng bộ lại.
                   </p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
                   <input
                     type="checkbox"
                     checked={autoFix}
@@ -131,8 +130,8 @@ export const CursorsTab: React.FC = () => {
             ) : (
               <div className="max-w-xs space-y-1">
                 <label className="text-xs font-semibold text-stone-700 flex items-center justify-between">
-                  <span>@delay_days (Overdue Threshold)</span>
-                  <span className="font-mono font-bold text-indigo-700">{delayDays} days</span>
+                  <span>Ngưỡng số ngày quá hạn (@delay_days)</span>
+                  <span className="font-mono font-bold text-indigo-700">{delayDays} ngày</span>
                 </label>
                 <input
                   type="number"
@@ -143,7 +142,7 @@ export const CursorsTab: React.FC = () => {
                   className="w-full text-xs px-3 py-2 rounded-lg border border-stone-300 bg-stone-50 focus:bg-white focus:outline-hidden font-mono"
                 />
                 <p className="text-[10px] text-stone-500">
-                  Find active tickets received more than {delayDays} days ago without completion.
+                  Con trỏ sẽ lọc ra các phiếu tiếp nhận cách đây hơn {delayDays} ngày nhưng chưa hoàn thành hoặc chưa giao.
                 </p>
               </div>
             )}
@@ -157,86 +156,86 @@ export const CursorsTab: React.FC = () => {
                 {executing ? (
                   <>
                     <span className="animate-spin">⏳</span>
-                    <span>Iterating Cursor on MSSQL...</span>
+                    <span>Đang duyệt con trỏ trên SQL Server...</span>
                   </>
                 ) : (
                   <>
-                    <span>🔁 Iterate Cursor: {currentCursorItem.sqlName}</span>
+                    <span>🔁 Chạy Con Trỏ: {currentCursorItem.sqlName}</span>
                   </>
                 )}
               </button>
             </div>
           </div>
 
-          {/* Error Message */}
+          {/* Lỗi nếu có */}
           {errorMessage && (
             <div className="p-4 rounded-xl border border-rose-300 bg-rose-50 text-rose-900 text-xs font-semibold">
-              <span className="font-bold">Error:</span> {errorMessage}
+              <span className="font-bold">Lỗi:</span> {errorMessage}
             </div>
           )}
 
-          {/* Results: BEFORE & AFTER Comparison */}
+          {/* Kết quả đối chiếu */}
           {executionResult && (
             <div className="space-y-6 pt-4 border-t border-stone-100">
-              {/* Summary banner */}
-              <div className="p-4 rounded-xl bg-cyan-50 border border-cyan-200 flex items-center justify-between">
+              {/* Thẻ tóm tắt kết quả */}
+              <div className="p-4 rounded-xl bg-cyan-50 border border-cyan-200 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <span className="text-xs uppercase font-bold text-cyan-800">
-                    Cursor Execution Summary
+                    Tóm Tắt Kết Quả Duyệt Con Trỏ
                   </span>
-                  <div className="text-sm font-semibold text-stone-900 mt-0.5">
+                  <div className="text-sm font-semibold text-stone-900 mt-1">
                     {selectedCursor === 'sp_audit_invoices' ? (
                       <span>
-                        Discrepancies Detected:{' '}
+                        Số hóa đơn phát hiện sai lệch:{' '}
                         <strong className="text-indigo-700 font-mono text-base">
                           {executionResult.result?.discrepancies_found ?? 0}
                         </strong>{' '}
-                        | Auto-Fixed:{' '}
-                        <strong className="text-emerald-700">
-                          {executionResult.result?.was_auto_fixed ? 'YES (Committed)' : 'NO (Audit Only)'}
+                        | Trạng thái tự động sửa:{' '}
+                        <strong className={executionResult.result?.was_auto_fixed ? 'text-emerald-700' : 'text-stone-600'}>
+                          {executionResult.result?.was_auto_fixed ? 'ĐÃ ĐỒNG BỘ CẬP NHẬT' : 'CHỈ ĐỐI SOÁT (KHÔNG SỬA)'}
                         </strong>
                       </span>
                     ) : (
                       <span>
-                        Overdue Delayed Tickets Found by Cursor:{' '}
+                        Số phiếu quá hạn con trỏ tìm được:{' '}
                         <strong className="text-rose-700 font-mono text-base">
                           {executionResult.totalOverdueFound ?? 0}
                         </strong>{' '}
-                        (threshold &gt; {executionResult.delayDays} days)
+                        (ngưỡng trễ &gt; {executionResult.delayDays} ngày)
                       </span>
                     )}
                   </div>
                 </div>
-                <span className="text-xs font-mono text-cyan-900 bg-cyan-200/70 px-2.5 py-1 rounded-lg">
+                <span className="text-xs font-mono text-cyan-900 bg-cyan-200/70 px-2.5 py-1 rounded-lg font-bold">
                   {executionResult.cursorUsed}
                 </span>
               </div>
 
-              {/* Table 1: BEFORE Table */}
+              {/* Bảng 1: TRƯỚC */}
               <div className="space-y-2">
                 <DataTableView
                   title={
                     selectedCursor === 'sp_audit_invoices'
-                      ? 'Invoices Stored Totals (BEFORE Cursor Iteration)'
-                      : 'All Active Tickets (BEFORE Cursor Filtering)'
+                      ? 'Dữ liệu hóa đơn (TRƯỚC KHI CHẠY CON TRỎ ĐỐI SOÁT)'
+                      : 'Toàn bộ phiếu chưa hoàn thành (TRƯỚC KHI CON TRỎ LỌC)'
                   }
                   data={executionResult.before}
                   variant="before"
-                  subtitle="Dataset prior to executing cursor row-by-row iteration"
+                  subtitle="Tập dữ liệu ban đầu trước khi con trỏ duyệt từng dòng"
                 />
               </div>
 
-              {/* Table 2: AFTER Table */}
+              {/* Bảng 2: SAU */}
               <div className="space-y-2">
                 <DataTableView
                   title={
                     selectedCursor === 'sp_audit_invoices'
-                      ? 'Invoices Reconciliation State (AFTER Cursor Audit)'
-                      : 'Overdue Tickets Dataset (FETCHED BY CURSOR)'
+                      ? 'Dữ liệu hóa đơn (SAU KHI ĐỐI SOÁT HÒA ĐỒNG BỘ)'
+                      : 'Tập dữ liệu phiếu quá hạn (DO CON TRỎ TẠO RA)'
                   }
                   data={executionResult.after}
                   variant="after"
-                  subtitle="Results produced or updated by the T-SQL cursor loop"
+                  subtitle="Kết quả được con trỏ tính toán và tạo ra sau vòng lặp WHILE @@FETCH_STATUS = 0"
                 />
               </div>
             </div>
@@ -246,4 +245,3 @@ export const CursorsTab: React.FC = () => {
     </div>
   );
 };
-

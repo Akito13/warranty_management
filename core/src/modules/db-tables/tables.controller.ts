@@ -1,10 +1,8 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Public } from '@/common/decorators/public.decorator';
 import { TablesService } from './tables.service';
 
 @ApiTags('Database Tables')
-@Public()
 @Controller('tables')
 export class TablesController {
   constructor(private readonly tablesService: TablesService) {}

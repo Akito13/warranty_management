@@ -7,6 +7,7 @@ import {
   TableOverviewItem,
   TriggerCatalogItem,
   TriggerExecutionResult,
+  TriggerPreviewResult,
 } from '../types';
 
 export const workbenchService = {
@@ -94,6 +95,16 @@ export const workbenchService = {
 
   async getTriggerSampleData(): Promise<any> {
     return api.get<any>('/triggers/sample-data');
+  },
+
+  async getTriggerPreview(
+    trigger_id: string,
+    scenario_id: string,
+  ): Promise<TriggerPreviewResult> {
+    return api.get<TriggerPreviewResult>('/triggers/preview', {
+      trigger_id,
+      scenario_id,
+    });
   },
 
   async executeTriggerTest(params: {

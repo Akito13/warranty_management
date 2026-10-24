@@ -3,13 +3,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
-import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
-import { RolesGuard } from '@/common/guards/roles.guard';
 import { LoggingInterceptor } from '@/common/interceptors/logging.interceptor';
 import { TransformResponseInterceptor } from '@/common/interceptors/transform-response.interceptor';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { appConfig } from '@/config/app.config';
-import { authConfig } from '@/config/auth.config';
 import { corsConfig } from '@/config/cors.config';
 import { databaseConfig } from '@/config/database.config';
 import {
@@ -22,15 +19,6 @@ import {
   TicketEntity,
   TicketStatusHistoryEntity,
 } from '@/database/entities';
-import { AuthModule } from '@/modules/auth/auth.module';
-import { CustomersModule } from '@/modules/customers/customers.module';
-import { DevicesModule } from '@/modules/devices/devices.module';
-import { EmployeesModule } from '@/modules/employees/employees.module';
-import { DatabaseAdminModule } from '@/modules/database-admin/database-admin.module';
-import { InvoicesModule } from '@/modules/invoices/invoices.module';
-import { PartsModule } from '@/modules/parts/parts.module';
-import { ReportsModule } from '@/modules/reports/reports.module';
-import { TicketsModule } from '@/modules/tickets/tickets.module';
 import { TablesModule } from '@/modules/db-tables/tables.module';
 import { ProceduresModule } from '@/modules/procedures/procedures.module';
 import { FunctionsModule } from '@/modules/functions/functions.module';
@@ -38,15 +26,15 @@ import { CursorsModule } from '@/modules/cursors/cursors.module';
 import { TriggersModule } from '@/modules/triggers/triggers.module';
 
 /**
- * Root Application Module orchestrating configuration, database persistence,
- * global interceptors/guards/filters, and feature modules.
+ * Root Application Module orchestrating MSSQL connection,
+ * global interceptors/filters, and database workbench feature modules.
  */
 @Module({
   imports: [
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, authConfig, corsConfig],
+      load: [appConfig, databaseConfig, corsConfig],
     }),
 
     // TypeORM with MSSQL
@@ -78,16 +66,7 @@ import { TriggersModule } from '@/modules/triggers/triggers.module';
       },
     ]),
 
-    // Feature Modules
-    AuthModule,
-    EmployeesModule,
-    CustomersModule,
-    DevicesModule,
-    TicketsModule,
-    PartsModule,
-    InvoicesModule,
-    ReportsModule,
-    DatabaseAdminModule,
+    // Active Feature Modules for Database Operations & Demo
     TablesModule,
     ProceduresModule,
     FunctionsModule,
@@ -104,16 +83,6 @@ import { TriggersModule } from '@/modules/triggers/triggers.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
-    },
-    // Global JWT Authentication Guard (handles @Public() routes)
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
-    // Global RBAC Roles Guard
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
     },
     // Global Response Serialization Interceptor
     {

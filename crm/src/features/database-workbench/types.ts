@@ -73,6 +73,7 @@ export interface TriggerCatalogItem {
   table: string;
   timing: string;
   type: 'guard' | 'cascade' | 'audit';
+  typeLabel?: string;
   description: string;
   scenarios: Array<{
     id: string;
@@ -80,7 +81,24 @@ export interface TriggerCatalogItem {
     description: string;
     expectedOutcome: 'STOPPED' | 'MODIFIED';
     actionDescription: string;
+    sqlTemplate?: string;
   }>;
+}
+
+export interface TriggerTableComparison {
+  tableName: string;
+  tableTitle: string;
+  description?: string;
+  highlightColumns?: string[];
+  beforeRows: Record<string, any>[];
+  afterRows?: Record<string, any>[];
+  statusNote?: string;
+}
+
+export interface TriggerPreviewResult {
+  exactSql: string;
+  targetDesc: string;
+  tables: TriggerTableComparison[];
 }
 
 export interface TriggerExecutionResult {
@@ -89,9 +107,11 @@ export interface TriggerExecutionResult {
   triggerName: string;
   reason?: string;
   errorCode?: number;
+  exactSql?: string;
+  targetInfo?: Record<string, any>;
   before?: any;
   after?: any;
   relatedItems?: any;
+  tables?: TriggerTableComparison[];
   message: string;
 }
-

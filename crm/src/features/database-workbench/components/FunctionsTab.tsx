@@ -30,7 +30,7 @@ export const FunctionsTab: React.FC = () => {
         initFormForFunc(cat[0].id, samples);
       }
     } catch (err) {
-      console.error('Failed to load functions catalog', err);
+      console.error('Lỗi khi tải danh mục hàm', err);
     }
   };
 
@@ -72,8 +72,8 @@ export const FunctionsTab: React.FC = () => {
       }
       setExecutionResult(res);
     } catch (err: any) {
-      console.error('Function execution error', err);
-      setErrorMessage(err.message || 'Execution error encountered');
+      console.error('Lỗi khi gọi hàm', err);
+      setErrorMessage(err.message || 'Lỗi thực thi hàm người dùng');
     } finally {
       setExecuting(false);
     }
@@ -81,7 +81,7 @@ export const FunctionsTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Function selection pills */}
+      {/* Danh sách 3 hàm */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {catalog.map((fn) => {
           const isSelected = fn.id === selectedFunc;
@@ -97,20 +97,20 @@ export const FunctionsTab: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
-                  {fn.type}
+                  {fn.type === 'scalar' ? 'Hàm Vô Hướng (Scalar)' : 'Hàm Dạng Bảng (Table-Valued)'}
                 </span>
                 <span className="text-[10px] font-mono text-stone-500 font-semibold">
-                  Returns: {fn.returnType}
+                  Trả về: {fn.returnType}
                 </span>
               </div>
-              <div className="font-bold text-xs text-stone-900 mt-2">{fn.name}</div>
+              <div className="font-bold text-xs text-stone-900 mt-2 leading-snug">{fn.name}</div>
               <div className="text-[11px] font-mono text-stone-500 mt-0.5">{fn.sqlName}</div>
             </button>
           );
         })}
       </div>
 
-      {/* Main Execution Workbench */}
+      {/* Bảng làm việc chính */}
       {currentFuncItem && (
         <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-xs space-y-6">
           {/* Header */}
@@ -118,7 +118,7 @@ export const FunctionsTab: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-extrabold text-stone-900">{currentFuncItem.name}</span>
-                <span className="font-mono text-xs px-2 py-0.5 rounded bg-stone-100 text-stone-700">
+                <span className="font-mono text-xs px-2 py-0.5 rounded bg-stone-100 text-stone-700 font-bold">
                   {currentFuncItem.sqlName}
                 </span>
               </div>
@@ -130,14 +130,14 @@ export const FunctionsTab: React.FC = () => {
               onClick={() => initFormForFunc(selectedFunc, sampleData)}
               className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-stone-300 hover:bg-stone-100 cursor-pointer text-stone-700 self-start sm:self-auto"
             >
-              ↻ Reset / Load Sample
+              ↻ Tải Dữ Liệu Mẫu Mới
             </button>
           </div>
 
-          {/* Form */}
+          {/* Form tham số */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
-              Input Parameters
+              Tham Số Đầu Vào (Input Parameters)
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -176,73 +176,73 @@ export const FunctionsTab: React.FC = () => {
                 {executing ? (
                   <>
                     <span className="animate-spin">⏳</span>
-                    <span>Calling Function on MSSQL...</span>
+                    <span>Đang gọi hàm trên SQL Server...</span>
                   </>
                 ) : (
                   <>
-                    <span>🧮 Call Function: {currentFuncItem.sqlName}</span>
+                    <span>🧮 Thực Thi Hàm: {currentFuncItem.sqlName}</span>
                   </>
                 )}
               </button>
             </div>
           </div>
 
-          {/* Error Message */}
+          {/* Lỗi nếu có */}
           {errorMessage && (
             <div className="p-4 rounded-xl border border-rose-300 bg-rose-50 text-rose-900 text-xs font-semibold">
-              <span className="font-bold">Error:</span> {errorMessage}
+              <span className="font-bold">Lỗi:</span> {errorMessage}
             </div>
           )}
 
-          {/* Results Comparison */}
+          {/* Kết quả đối chiếu */}
           {executionResult && (
             <div className="space-y-6 pt-4 border-t border-stone-100">
-              {/* Scalar summary card if scalar function */}
+              {/* Thẻ tóm tắt kết quả vô hướng nếu có */}
               {executionResult.result && (
-                <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <span className="text-xs uppercase font-bold text-purple-700">
-                      Function Evaluation Output
+                      Kết Quả Tính Toán Từ Hàm Vô Hướng
                     </span>
-                    <div className="text-sm font-semibold text-stone-900 mt-0.5">
+                    <div className="text-sm font-semibold text-stone-900 mt-1">
                       {selectedFunc === 'fn_calculate_parts_total' && (
                         <span>
-                          Parts Total: <strong className="text-emerald-700 font-mono text-lg">${executionResult.result.parts_total.toFixed(2)}</strong>
+                          Tổng tiền linh kiện: <strong className="text-emerald-700 font-mono text-lg">${executionResult.result.parts_total.toFixed(2)}</strong>
                         </span>
                       )}
                       {selectedFunc === 'fn_is_device_under_warranty' && (
                         <span>
-                          Warranty Evaluation: {' '}
+                          Kết quả kiểm tra bảo hành:{' '}
                           <strong className={executionResult.result.is_under_warranty ? 'text-emerald-700 font-bold' : 'text-stone-500'}>
-                            {executionResult.result.is_under_warranty ? '1 (Under Active Warranty)' : '0 (Expired / Not Covered)'}
+                            {executionResult.result.is_under_warranty ? '1 (Còn trong thời hạn bảo hành)' : '0 (Đã hết hạn hoặc không có bảo hành)'}
                           </strong>
                         </span>
                       )}
                     </div>
                   </div>
-                  <span className="text-xs font-mono text-purple-800 bg-purple-200/70 px-2.5 py-1 rounded-lg">
-                    {currentFuncItem.sqlName}()
+                  <span className="text-xs font-mono text-purple-800 bg-purple-200/70 px-2.5 py-1 rounded-lg font-bold">
+                    SELECT {currentFuncItem.sqlName}()
                   </span>
                 </div>
               )}
 
-              {/* Table 1: BEFORE Table */}
+              {/* Bảng TRƯỚC */}
               <div className="space-y-2">
                 <DataTableView
-                  title="Source Entity / Data (BEFORE Evaluation)"
+                  title="Dữ liệu nguồn tham chiếu (TRƯỚC KHI GỌI HÀM)"
                   data={executionResult.before}
                   variant="before"
-                  subtitle="Original data in database referenced by the function evaluation"
+                  subtitle="Dữ liệu gốc trong database được hàm sử dụng để tính toán"
                 />
               </div>
 
-              {/* Table 2: AFTER Table / Result dataset */}
+              {/* Bảng SAU */}
               <div className="space-y-2">
                 <DataTableView
-                  title="Function Output / Result Dataset (AFTER Evaluation)"
+                  title="Kết quả trả về từ hàm (SAU KHI THỰC THI)"
                   data={executionResult.after}
                   variant="after"
-                  subtitle="Computed results or inline table rows returned by the function"
+                  subtitle="Dữ liệu tính toán vô hướng hoặc bảng bản ghi được hàm trả về"
                 />
               </div>
             </div>
@@ -252,4 +252,3 @@ export const FunctionsTab: React.FC = () => {
     </div>
   );
 };
-

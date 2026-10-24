@@ -27,45 +27,45 @@ export class FunctionsService {
     return [
       {
         id: 'fn_calculate_parts_total',
-        name: 'Calculate Parts Total for Invoice',
+        name: 'Tính Tổng Tiền Linh Kiện Hóa Đơn',
         sqlName: 'dbo.fn_calculate_parts_total',
         type: 'scalar',
         returnType: 'DECIMAL(18,2)',
         description:
-          'Computes the total sum of spare parts costs (quantity * unit_price) for an invoice.',
+          'Hàm vô hướng tính tổng giá trị các linh kiện thay thế (SUM(quantity * unit_price)) của một hóa đơn cụ thể.',
         parameters: [
-          { name: 'invoice_id', type: 'number', required: true, description: 'Target invoice ID' },
+          { name: 'invoice_id', type: 'number', required: true, description: 'ID hóa đơn cần tính tiền linh kiện' },
         ],
       },
       {
         id: 'fn_is_device_under_warranty',
-        name: 'Check Warranty Status on Date',
+        name: 'Kiểm Tra Tình Trạng Bảo Hành Theo Ngày',
         sqlName: 'dbo.fn_is_device_under_warranty',
         type: 'scalar',
-        returnType: 'BIT (1 or 0)',
+        returnType: 'BIT (1 hoặc 0)',
         description:
-          'Determines whether a device is under valid manufacturer/store warranty as of a specific date.',
+          'Hàm vô hướng xác định thiết bị có còn hạn bảo hành hợp lệ tại một ngày cụ thể hay không (dựa trên cờ is_under_warranty và ngày warranty_expiry_date).',
         parameters: [
-          { name: 'device_id', type: 'number', required: true, description: 'Target device ID' },
+          { name: 'device_id', type: 'number', required: true, description: 'ID thiết bị cần kiểm tra' },
           {
             name: 'check_date',
             type: 'date',
             required: true,
             defaultValue: new Date().toISOString().split('T')[0],
-            description: 'Date to evaluate warranty validity',
+            description: 'Ngày cần kiểm tra hiệu lực bảo hành',
           },
         ],
       },
       {
         id: 'fn_get_device_repair_history',
-        name: 'Get Device Repair History',
+        name: 'Tra Cứu Toàn Bộ Lịch Sử Sửa Chữa Thiết Bị',
         sqlName: 'dbo.fn_get_device_repair_history',
         type: 'table_valued',
-        returnType: 'TABLE',
+        returnType: 'TABLE (Bảng dữ liệu)',
         description:
-          'Returns an inline table with full historical repair records, technicians, and invoice totals for a device.',
+          'Hàm trả về bảng (inline table-valued) chứa đầy đủ lịch sử tất cả các lần tiếp nhận, chẩn đoán, kỹ thuật viên phụ trách, hóa đơn và trạng thái thanh toán của thiết bị.',
         parameters: [
-          { name: 'device_id', type: 'number', required: true, description: 'Device ID to query' },
+          { name: 'device_id', type: 'number', required: true, description: 'ID thiết bị cần tra cứu lịch sử' },
         ],
       },
     ];
@@ -97,7 +97,6 @@ export class FunctionsService {
    * 1. fn_calculate_parts_total
    */
   async executeCalculatePartsTotal(dto: { invoice_id: number }) {
-    // Before: invoice items and invoice info
     const beforeInvoice = await this.dataSource.query(
       `SELECT * FROM invoices WHERE id = @0`,
       [dto.invoice_id],
@@ -110,7 +109,6 @@ export class FunctionsService {
       [dto.invoice_id],
     );
 
-    // Call scalar function
     const query = `SELECT dbo.fn_calculate_parts_total(@0) AS parts_total;`;
     const res = await this.dataSource.query(query, [dto.invoice_id]);
     const partsTotal = res?.[0]?.parts_total ?? 0;
@@ -129,7 +127,7 @@ export class FunctionsService {
         {
           invoice_id: dto.invoice_id,
           calculated_parts_total: Number(partsTotal),
-          item_count: beforeItems.length,
+          total_items: beforeItems.length,
           evaluation_time: new Date().toISOString(),
         },
       ],
@@ -168,7 +166,7 @@ export class FunctionsService {
           device_id: dto.device_id,
           check_date: checkDate,
           is_under_warranty: isUnderWarranty ? 1 : 0,
-          status_text: isUnderWarranty ? 'Active Warranty' : 'Expired / Not Under Warranty',
+          status_text: isUnderWarranty ? 'Còn Hạn Bảo Hành (Active)' : 'Hết Hạn / Không Bảo Hành (Expired)',
         },
       ],
     };
@@ -198,4 +196,3 @@ export class FunctionsService {
     };
   }
 }
-

@@ -1,10 +1,8 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Public } from '@/common/decorators/public.decorator';
 import { CursorsService } from './cursors.service';
 
 @ApiTags('Cursors')
-@Public()
 @Controller('cursors')
 export class CursorsController {
   constructor(private readonly cursorsService: CursorsService) {}

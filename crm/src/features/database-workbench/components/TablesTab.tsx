@@ -13,12 +13,10 @@ export const TablesTab: React.FC = () => {
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
 
-  // Load table list
   useEffect(() => {
     loadOverview();
   }, []);
 
-  // Load selected table data
   useEffect(() => {
     if (selectedTable) {
       loadData(selectedTable, page, search);
@@ -33,7 +31,7 @@ export const TablesTab: React.FC = () => {
         setSelectedTable(list[0].tableName);
       }
     } catch (err) {
-      console.error('Failed to load tables overview', err);
+      console.error('Không thể tải danh sách bảng', err);
     }
   };
 
@@ -43,7 +41,7 @@ export const TablesTab: React.FC = () => {
       const res = await workbenchService.getTableData(tbl, p, 20, q);
       setTableData(res);
     } catch (err) {
-      console.error('Failed to load table data', err);
+      console.error('Không thể tải dữ liệu bảng', err);
     } finally {
       setLoading(false);
     }
@@ -57,18 +55,18 @@ export const TablesTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Table selector cards */}
+      {/* Danh sách các bảng */}
       <div>
-        <h3 className="text-base font-bold text-stone-900 mb-3 flex items-center justify-between">
-          <span>Database Tables (Source: init-db.sql)</span>
+        <h3 className="text-sm font-bold text-stone-900 mb-3 flex items-center justify-between">
+          <span>8 Bảng Dữ Liệu Nghiệp Vụ (Nguồn: init-db.sql)</span>
           <button
             onClick={() => {
               loadOverview();
               loadData(selectedTable, page, search);
             }}
-            className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-stone-300 hover:bg-stone-100 cursor-pointer transition-colors"
+            className="text-xs font-semibold px-3 py-1 rounded-lg border border-stone-300 hover:bg-stone-100 cursor-pointer transition-colors"
           >
-            ↻ Refresh All
+            ↻ Làm Mới Toàn Bộ
           </button>
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -92,7 +90,7 @@ export const TablesTab: React.FC = () => {
                   {t.tableName}
                 </div>
                 <div className="text-[11px] text-stone-500 mt-1 flex items-center justify-between">
-                  <span>Rows:</span>
+                  <span>Số dòng:</span>
                   <span className="font-mono font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded text-[10px]">
                     {t.rowCount}
                   </span>
@@ -103,7 +101,7 @@ export const TablesTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Table header & Search */}
+      {/* Chi tiết dữ liệu bảng đã chọn */}
       <div className="bg-white rounded-2xl border border-stone-200 p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-100">
           <div>
@@ -112,11 +110,11 @@ export const TablesTab: React.FC = () => {
                 dbo.[{selectedTable}]
               </span>
               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-stone-100 text-stone-700">
-                {tableData?.total ?? 0} total records
+                {tableData?.total ?? 0} dòng dữ liệu
               </span>
             </div>
             <p className="text-xs text-stone-500 mt-0.5">
-              Inspecting raw records and schema defined in init-db.sql
+              Truy vấn trực tiếp các cột và bản ghi được định nghĩa trong init-db.sql
             </p>
           </div>
 
@@ -125,14 +123,14 @@ export const TablesTab: React.FC = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Filter text..."
+              placeholder="Tìm kiếm chuỗi..."
               className="text-xs px-3 py-1.5 rounded-lg border border-stone-300 bg-stone-50 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500 w-48"
             />
             <button
               type="submit"
               className="px-3 py-1.5 rounded-lg bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 cursor-pointer"
             >
-              Search
+              Tìm Kiếm
             </button>
             {search && (
               <button
@@ -141,35 +139,35 @@ export const TablesTab: React.FC = () => {
                   setSearch('');
                   loadData(selectedTable, 1, '');
                 }}
-                className="text-xs text-stone-500 hover:text-stone-800 underline"
+                className="text-xs text-stone-500 hover:text-stone-800 underline cursor-pointer"
               >
-                Clear
+                Xóa lọc
               </button>
             )}
           </form>
         </div>
 
-        {/* Live Table View */}
+        {/* Bảng dữ liệu trực tiếp */}
         <div className="mt-4">
           {loading ? (
             <div className="py-12 text-center text-xs text-stone-500 font-mono animate-pulse">
-              Fetching records from SQL Server...
+              Đang tải dữ liệu từ Microsoft SQL Server...
             </div>
           ) : (
             <DataTableView
-              title={`Table Records: ${selectedTable}`}
+              title={`Bản ghi trong bảng: ${selectedTable}`}
               data={tableData?.items || []}
               variant="default"
-              subtitle={`Page ${tableData?.page || 1} of ${tableData?.totalPages || 1}`}
+              subtitle={`Trang ${tableData?.page || 1} / ${tableData?.totalPages || 1}`}
             />
           )}
         </div>
 
-        {/* Pagination controls */}
+        {/* Thanh phân trang */}
         {tableData && tableData.totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-100 text-xs text-stone-600">
             <span>
-              Showing {tableData.items.length} of {tableData.total} rows
+              Đang hiển thị {tableData.items.length} trên tổng số {tableData.total} bản ghi
             </span>
             <div className="flex items-center gap-1.5">
               <button
@@ -177,7 +175,7 @@ export const TablesTab: React.FC = () => {
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 className="px-2.5 py-1 rounded border border-stone-200 bg-white hover:bg-stone-50 disabled:opacity-40 cursor-pointer"
               >
-                Previous
+                Trang trước
               </button>
               <span className="font-mono font-bold text-stone-900 px-2">
                 {page} / {tableData.totalPages}
@@ -187,7 +185,7 @@ export const TablesTab: React.FC = () => {
                 onClick={() => setPage((p) => p + 1)}
                 className="px-2.5 py-1 rounded border border-stone-200 bg-white hover:bg-stone-50 disabled:opacity-40 cursor-pointer"
               >
-                Next
+                Trang sau
               </button>
             </div>
           </div>
@@ -196,4 +194,3 @@ export const TablesTab: React.FC = () => {
     </div>
   );
 };
-

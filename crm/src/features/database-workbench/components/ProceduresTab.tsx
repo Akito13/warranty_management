@@ -30,7 +30,7 @@ export const ProceduresTab: React.FC = () => {
         initFormForProc(cat[0].id, samples);
       }
     } catch (err) {
-      console.error('Failed to load procedures catalog', err);
+      console.error('Lỗi khi tải danh mục stored procedure', err);
     }
   };
 
@@ -39,16 +39,15 @@ export const ProceduresTab: React.FC = () => {
     setExecutionResult(null);
     setErrorMessage(null);
 
-    // Provide intelligent defaults from live samples
     if (procId === 'sp_receive_device') {
       const devId = samples?.devices?.[0]?.id || 1;
       const recId = samples?.receptionists?.[0]?.id || 1;
       setFormData({
         device_id: devId,
         receptionist_id: recId,
-        issue_description: 'Device display flickering and overheating during intensive load',
-        initial_condition: 'Minor scuffs on back cover, screen intact',
-        accessories: 'Original AC Charger, USB-C Cable',
+        issue_description: 'Màn hình chớp nháy và thiết bị nóng nhanh khi chạy tác vụ nặng',
+        initial_condition: 'Trầy nhẹ nắp lưng, màn hình và bàn phím còn nguyên vẹn',
+        accessories: 'Củ sạc zin 65W, Cáp Type-C, Túi chống sốc',
         ticket_type: 'repair',
       });
     } else if (procId === 'sp_process_ticket') {
@@ -58,8 +57,8 @@ export const ProceduresTab: React.FC = () => {
         ticket_id: tickId,
         status: 'repairing',
         technician_id: techId,
-        fault_cause: 'Degraded power regulation capacitor and thermal paste dry-out',
-        repair_solution: 'Replaced thermal compound and capacitor on motherboard',
+        fault_cause: 'Tụ lọc nguồn CPU bị phù và keo tản nhiệt bị khô cứng',
+        repair_solution: 'Thay thế tụ lọc nguồn và tra lại keo tản nhiệt gốm cao cấp',
         estimated_cost: 150,
       });
     } else if (procId === 'sp_create_invoice') {
@@ -111,8 +110,8 @@ export const ProceduresTab: React.FC = () => {
       }
       setExecutionResult(res);
     } catch (err: any) {
-      console.error('Procedure execution error', err);
-      setErrorMessage(err.message || 'Execution error encountered');
+      console.error('Lỗi thực thi thủ tục', err);
+      setErrorMessage(err.message || 'Lỗi phát sinh trong quá trình gọi thủ tục');
     } finally {
       setExecuting(false);
     }
@@ -120,7 +119,7 @@ export const ProceduresTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Procedure pills selection */}
+      {/* Danh sách 5 stored procedure */}
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
         {catalog.map((proc) => {
           const isSelected = proc.id === selectedProc;
@@ -137,14 +136,14 @@ export const ProceduresTab: React.FC = () => {
               <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">
                 {proc.category}
               </span>
-              <div className="font-bold text-xs text-stone-900 mt-1.5">{proc.name}</div>
+              <div className="font-bold text-xs text-stone-900 mt-1.5 leading-snug">{proc.name}</div>
               <div className="text-[11px] font-mono text-stone-500 mt-0.5">{proc.sqlName}</div>
             </button>
           );
         })}
       </div>
 
-      {/* Main Execution Workbench */}
+      {/* Bảng làm việc chính */}
       {currentProcItem && (
         <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-xs space-y-6">
           {/* Header */}
@@ -152,7 +151,7 @@ export const ProceduresTab: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-extrabold text-stone-900">{currentProcItem.name}</span>
-                <span className="font-mono text-xs px-2 py-0.5 rounded bg-stone-100 text-stone-700">
+                <span className="font-mono text-xs px-2 py-0.5 rounded bg-stone-100 text-stone-700 font-bold">
                   {currentProcItem.sqlName}
                 </span>
               </div>
@@ -164,14 +163,14 @@ export const ProceduresTab: React.FC = () => {
               onClick={() => initFormForProc(selectedProc, sampleData)}
               className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-stone-300 hover:bg-stone-100 cursor-pointer text-stone-700 self-start sm:self-auto"
             >
-              ↻ Reset / Load Sample
+              ↻ Tải Dữ Liệu Mẫu Mới
             </button>
           </div>
 
-          {/* Parameters Form */}
+          {/* Form tham số đầu vào */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
-              Input Parameters
+              Tham Số Đầu Vào (Input Parameters)
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -224,64 +223,63 @@ export const ProceduresTab: React.FC = () => {
                 {executing ? (
                   <>
                     <span className="animate-spin">⏳</span>
-                    <span>Executing Procedure on MSSQL...</span>
+                    <span>Đang thực thi thủ tục trên SQL Server...</span>
                   </>
                 ) : (
                   <>
-                    <span>⚡ Call Procedure: {currentProcItem.sqlName}</span>
+                    <span>⚡ Thực Thi Thủ Tục: {currentProcItem.sqlName}</span>
                   </>
                 )}
               </button>
             </div>
           </div>
 
-          {/* Error Display */}
+          {/* Thông báo lỗi nếu có */}
           {errorMessage && (
             <div className="p-4 rounded-xl border border-rose-300 bg-rose-50 text-rose-900 text-xs font-semibold">
               <div className="font-bold flex items-center gap-1.5 mb-1">
-                <span>⚠️ Execution Encountered Database Constraint / Error:</span>
+                <span>⚠️ Lỗi Ràng Buộc / Ngoại Lệ Database:</span>
               </div>
               <p className="font-mono">{errorMessage}</p>
             </div>
           )}
 
-          {/* Results: BEFORE & AFTER Tables Comparison */}
+          {/* Kết quả: 2 Bảng TRƯỚC vs SAU khi thực hiện */}
           {executionResult && (
             <div className="space-y-6 pt-4 border-t border-stone-100">
-              <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-xs text-emerald-900 font-semibold flex items-center justify-between">
+              <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-xs text-emerald-900 font-semibold flex flex-wrap items-center justify-between gap-2">
                 <span>
-                  ✓ Stored procedure executed successfully! Comparing original data vs updated data
-                  below:
+                  ✓ Thủ tục đã thực thi thành công! So sánh đối chiếu trạng thái dữ liệu trước và sau bên dưới:
                 </span>
                 {executionResult.newTicketId && (
-                  <span className="bg-emerald-200 px-2 py-0.5 rounded font-mono">
-                    Created ticket_id: #{executionResult.newTicketId}
+                  <span className="bg-emerald-200 px-2 py-0.5 rounded font-mono font-bold">
+                    Ticket ID vừa tạo: #{executionResult.newTicketId}
                   </span>
                 )}
                 {executionResult.newInvoiceId && (
-                  <span className="bg-emerald-200 px-2 py-0.5 rounded font-mono">
-                    Created invoice_id: #{executionResult.newInvoiceId}
+                  <span className="bg-emerald-200 px-2 py-0.5 rounded font-mono font-bold">
+                    Invoice ID vừa tạo: #{executionResult.newInvoiceId}
                   </span>
                 )}
               </div>
 
-              {/* Table 1: BEFORE Table */}
+              {/* Bảng 1: TRƯỚC */}
               <div className="space-y-2">
                 <DataTableView
-                  title="Table State: BEFORE Procedure Execution"
+                  title="Dữ liệu liên quan: TRƯỚC KHI THỰC THI THỦ TỤC"
                   data={executionResult.before}
                   variant="before"
-                  subtitle="Original data fetched immediately prior to procedure invocation"
+                  subtitle="Dữ liệu ban đầu được truy vấn ngay trước khi gọi thủ tục"
                 />
               </div>
 
-              {/* Table 2: AFTER Table */}
+              {/* Bảng 2: SAU */}
               <div className="space-y-2">
                 <DataTableView
-                  title="Table State: AFTER Procedure Execution"
+                  title="Dữ liệu liên quan: SAU KHI THỰC THI THỦ TỤC"
                   data={executionResult.after}
                   variant="after"
-                  subtitle="Updated data fetched immediately after procedure executed and committed"
+                  subtitle="Dữ liệu cập nhật mới nhất sau khi thủ tục đã commit vào cơ sở dữ liệu"
                 />
               </div>
             </div>
@@ -291,4 +289,3 @@ export const ProceduresTab: React.FC = () => {
     </div>
   );
 };
-

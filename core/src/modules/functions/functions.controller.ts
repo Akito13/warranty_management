@@ -1,10 +1,8 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Public } from '@/common/decorators/public.decorator';
 import { FunctionsService } from './functions.service';
 
 @ApiTags('User Functions')
-@Public()
 @Controller('functions')
 export class FunctionsController {
   constructor(private readonly functionsService: FunctionsService) {}

@@ -1,10 +1,8 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Public } from '@/common/decorators/public.decorator';
 import { TriggersService } from './triggers.service';
 
 @ApiTags('Triggers')
-@Public()
 @Controller('triggers')
 export class TriggersController {
   constructor(private readonly triggersService: TriggersService) {}
@@ -19,6 +17,15 @@ export class TriggersController {
   @ApiOperation({ summary: 'Get sample database rows suitable for trigger tests' })
   getSampleData() {
     return this.triggersService.getSampleData();
+  }
+
+  @Get('preview')
+  @ApiOperation({ summary: 'Get preview tables and exact SQL statement before running trigger' })
+  async getPreview(
+    @Query('trigger_id') trigger_id: string,
+    @Query('scenario_id') scenario_id: string,
+  ) {
+    return this.triggersService.getTriggerPreview(trigger_id, scenario_id);
   }
 
   @Post('test')

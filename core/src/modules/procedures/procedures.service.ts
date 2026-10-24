@@ -27,91 +27,91 @@ export class ProceduresService {
     return [
       {
         id: 'sp_receive_device',
-        name: 'Receive Device & Create Ticket',
+        name: 'Tiếp Nhận Thiết Bị & Tạo Phiếu Sửa Chữa',
         sqlName: 'dbo.sp_receive_device',
-        category: 'Reception',
+        category: 'Tiếp Nhận POS',
         description:
-          'Receives a customer device, auto-detects warranty validity, and creates a repair ticket in "received" status.',
+          'Tiếp nhận thiết bị khách hàng mang đến, tự động kiểm tra thời hạn bảo hành bằng hàm fn_is_device_under_warranty để gắn loại phiếu (warranty/repair), và tạo mới phiếu ở trạng thái "received".',
         parameters: [
-          { name: 'device_id', type: 'number', required: true, description: 'ID of the device to receive' },
-          { name: 'receptionist_id', type: 'number', required: true, description: 'ID of employee (receptionist or manager)' },
-          { name: 'issue_description', type: 'string', required: true, description: 'Customer description of the malfunction' },
-          { name: 'initial_condition', type: 'string', required: false, description: 'Physical condition upon receipt' },
-          { name: 'accessories', type: 'string', required: false, description: 'Accessories included (charger, cable, etc.)' },
+          { name: 'device_id', type: 'number', required: true, description: 'ID thiết bị khách hàng cần tiếp nhận' },
+          { name: 'receptionist_id', type: 'number', required: true, description: 'ID nhân viên tiếp nhận (lễ tân hoặc quản lý)' },
+          { name: 'issue_description', type: 'string', required: true, description: 'Mô tả hiện tượng lỗi từ khách hàng' },
+          { name: 'initial_condition', type: 'string', required: false, description: 'Tình trạng ngoại quan khi tiếp nhận' },
+          { name: 'accessories', type: 'string', required: false, description: 'Phụ kiện kèm theo (sạc, cáp, hộp...)' },
           {
             name: 'ticket_type',
             type: 'select',
             required: false,
             defaultValue: 'repair',
             options: ['repair', 'warranty', 're_repair'],
-            description: 'Ticket type classification',
+            description: 'Phân loại phiếu sửa chữa / bảo hành',
           },
         ],
       },
       {
         id: 'sp_process_ticket',
-        name: 'Process Ticket & Assign Technician',
+        name: 'Xử Lý Phiếu & Phân Công Kỹ Thuật Viên',
         sqlName: 'dbo.sp_process_ticket',
-        category: 'Technician Operations',
+        category: 'Kỹ Thuật Viên',
         description:
-          'Advances ticket workflow, assigns technician, documents fault causes and repair solution.',
+          'Chuyển bước quy trình xử lý phiếu, phân công kỹ thuật viên phụ trách, cập nhật nguyên nhân lỗi, giải pháp sửa chữa và chi phí dự kiến.',
         parameters: [
-          { name: 'ticket_id', type: 'number', required: true, description: 'ID of the ticket to process' },
+          { name: 'ticket_id', type: 'number', required: true, description: 'ID phiếu sửa chữa cần xử lý' },
           {
             name: 'status',
             type: 'select',
             required: true,
             defaultValue: 'inspecting',
             options: ['received', 'inspecting', 'waiting_for_parts', 'repairing', 'completed', 'delivered', 'cancelled'],
-            description: 'New ticket status',
+            description: 'Trạng thái mới của phiếu',
           },
-          { name: 'technician_id', type: 'number', required: false, description: 'ID of assigned technician' },
-          { name: 'fault_cause', type: 'string', required: false, description: 'Diagnosed fault root cause' },
-          { name: 'repair_solution', type: 'string', required: false, description: 'Solution or service action taken' },
-          { name: 'estimated_cost', type: 'number', required: false, defaultValue: 0, description: 'Estimated cost' },
+          { name: 'technician_id', type: 'number', required: false, description: 'ID kỹ thuật viên được phân công' },
+          { name: 'fault_cause', type: 'string', required: false, description: 'Nguyên nhân hư hỏng sau khi chẩn đoán' },
+          { name: 'repair_solution', type: 'string', required: false, description: 'Phương án xử lý kỹ thuật / sửa chữa' },
+          { name: 'estimated_cost', type: 'number', required: false, defaultValue: 0, description: 'Chi phí sửa chữa dự kiến' },
         ],
       },
       {
         id: 'sp_create_invoice',
-        name: 'Create Ticket Invoice',
+        name: 'Lập Hóa Đơn Cho Phiếu Sửa Chữa',
         sqlName: 'dbo.sp_create_invoice',
-        category: 'Billing',
+        category: 'Thu Ngân & Kế Toán',
         description:
-          'Creates an unpaid invoice for a ticket, with 100% labor discount automatically applied if ticket is warranty or re_repair.',
+          'Tạo hóa đơn ở trạng thái chưa thanh toán (unpaid). Nếu phiếu thuộc diện bảo hành (warranty) hoặc sửa lại (re_repair), tự động chiết khấu 100% tiền công (labor_fee).',
         parameters: [
-          { name: 'ticket_id', type: 'number', required: true, description: 'ID of the ticket needing an invoice' },
-          { name: 'labor_fee', type: 'number', required: false, defaultValue: 100, description: 'Base labor charge amount' },
+          { name: 'ticket_id', type: 'number', required: true, description: 'ID phiếu sửa chữa cần lập hóa đơn' },
+          { name: 'labor_fee', type: 'number', required: false, defaultValue: 100, description: 'Tiền công sửa chữa ban đầu ($)' },
         ],
       },
       {
         id: 'sp_add_invoice_part',
-        name: 'Add Spare Part to Invoice',
+        name: 'Thêm Linh Kiện Vào Hóa Đơn',
         sqlName: 'dbo.sp_add_invoice_part',
-        category: 'Billing & Inventory',
+        category: 'Kho & Hóa Đơn',
         description:
-          'Adds a replacement spare part to an invoice, verifying inventory stock and recalculating invoice total.',
+          'Thêm linh kiện thay thế vào hóa đơn, kiểm tra tính khả dụng trong kho parts. Nếu linh kiện đã có thì tự động cộng dồn số lượng và cập nhật tổng tiền hóa đơn.',
         parameters: [
-          { name: 'invoice_id', type: 'number', required: true, description: 'ID of the target unpaid invoice' },
-          { name: 'part_id', type: 'number', required: true, description: 'ID of the spare part from inventory' },
-          { name: 'quantity', type: 'number', required: true, defaultValue: 1, description: 'Quantity required' },
+          { name: 'invoice_id', type: 'number', required: true, description: 'ID hóa đơn chưa thanh toán' },
+          { name: 'part_id', type: 'number', required: true, description: 'ID linh kiện từ kho parts' },
+          { name: 'quantity', type: 'number', required: true, defaultValue: 1, description: 'Số lượng cần sử dụng' },
         ],
       },
       {
         id: 'sp_checkout_invoice',
-        name: 'Checkout Invoice & Deliver Ticket',
+        name: 'Thanh Toán Hóa Đơn & Bàn Giao Thiết Bị',
         sqlName: 'dbo.sp_checkout_invoice',
-        category: 'Cashier & Delivery',
+        category: 'Thu Ngân & Bàn Giao',
         description:
-          'Marks invoice as paid and transitions associated completed ticket to "delivered" status.',
+          'Chuyển trạng thái hóa đơn sang đã thanh toán (paid), ghi nhận hình thức thanh toán, thời điểm thanh toán và tự động cập nhật phiếu sửa chữa sang đã bàn giao ("delivered").',
         parameters: [
-          { name: 'invoice_id', type: 'number', required: true, description: 'ID of completed invoice to checkout' },
+          { name: 'invoice_id', type: 'number', required: true, description: 'ID hóa đơn cần thanh toán' },
           {
             name: 'payment_method',
             type: 'select',
             required: false,
             defaultValue: 'cash',
             options: ['cash', 'bank_transfer', 'credit_card'],
-            description: 'Payment method chosen by customer',
+            description: 'Phương thức thanh toán của khách hàng',
           },
         ],
       },
@@ -149,7 +149,6 @@ export class ProceduresService {
     accessories?: string;
     ticket_type?: string;
   }) {
-    // Before data: Device and its existing tickets
     const beforeDevice = await this.dataSource.query(
       `SELECT * FROM devices WHERE id = @0`,
       [dto.device_id],
@@ -159,7 +158,6 @@ export class ProceduresService {
       [dto.device_id],
     );
 
-    // Call stored procedure with OUTPUT parameter
     const callSql = `
       DECLARE @out_ticket_id INT;
       EXEC dbo.sp_receive_device
@@ -176,7 +174,7 @@ export class ProceduresService {
     const result = await this.dataSource.query(callSql, [
       dto.device_id,
       dto.receptionist_id,
-      dto.issue_description || 'Standard repair request',
+      dto.issue_description || 'Yêu cầu tiếp nhận sửa chữa thông thường',
       dto.initial_condition || null,
       dto.accessories || null,
       dto.ticket_type || 'repair',
@@ -184,7 +182,6 @@ export class ProceduresService {
 
     const newTicketId = result?.[0]?.new_ticket_id;
 
-    // After data
     const afterTicket = newTicketId
       ? await this.dataSource.query(`SELECT * FROM tickets WHERE id = @0`, [newTicketId])
       : [];
@@ -225,13 +222,12 @@ export class ProceduresService {
     repair_solution?: string;
     estimated_cost?: number;
   }) {
-    // Before data
     const beforeTicket = await this.dataSource.query(
       `SELECT * FROM tickets WHERE id = @0`,
       [dto.ticket_id],
     );
     if (!beforeTicket || beforeTicket.length === 0) {
-      throw new NotFoundException(`Ticket #${dto.ticket_id} not found`);
+      throw new NotFoundException(`Không tìm thấy phiếu sửa chữa #${dto.ticket_id}`);
     }
 
     const beforeHistory = await this.dataSource.query(
@@ -239,7 +235,6 @@ export class ProceduresService {
       [dto.ticket_id],
     );
 
-    // Call procedure
     const callSql = `
       EXEC dbo.sp_process_ticket
         @ticket_id = @0,
@@ -259,7 +254,6 @@ export class ProceduresService {
       dto.estimated_cost ?? null,
     ]);
 
-    // After data
     const afterTicket = await this.dataSource.query(
       `SELECT * FROM tickets WHERE id = @0`,
       [dto.ticket_id],
@@ -292,7 +286,7 @@ export class ProceduresService {
       [dto.ticket_id],
     );
     if (!beforeTicket || beforeTicket.length === 0) {
-      throw new NotFoundException(`Ticket #${dto.ticket_id} not found`);
+      throw new NotFoundException(`Không tìm thấy phiếu #${dto.ticket_id}`);
     }
 
     const beforeInvoices = await this.dataSource.query(
@@ -347,7 +341,7 @@ export class ProceduresService {
       [dto.invoice_id],
     );
     if (!beforeInvoice || beforeInvoice.length === 0) {
-      throw new NotFoundException(`Invoice #${dto.invoice_id} not found`);
+      throw new NotFoundException(`Không tìm thấy hóa đơn #${dto.invoice_id}`);
     }
 
     const beforePart = await this.dataSource.query(
@@ -412,7 +406,7 @@ export class ProceduresService {
       [dto.invoice_id],
     );
     if (!beforeInvoice || beforeInvoice.length === 0) {
-      throw new NotFoundException(`Invoice #${dto.invoice_id} not found`);
+      throw new NotFoundException(`Không tìm thấy hóa đơn #${dto.invoice_id}`);
     }
 
     const beforeTicket = await this.dataSource.query(
@@ -453,4 +447,3 @@ export class ProceduresService {
     };
   }
 }
-

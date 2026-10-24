@@ -27,37 +27,37 @@ export class CursorsService {
     return [
       {
         id: 'sp_audit_invoices',
-        name: 'Audit Invoices with Discrepancy Cursor',
+        name: 'Đối Soát Hóa Đơn Bằng Con Trỏ Duyệt Từng Dòng',
         sqlName: 'dbo.sp_audit_invoices',
         cursorName: 'cur_invoices CURSOR LOCAL FAST_FORWARD',
         cursorType: 'LOCAL FAST_FORWARD',
         description:
-          'Iterates through every invoice row-by-row using a T-SQL cursor, computes expected total using fn_calculate_parts_total, detects discrepancies, and optionally auto-reconciles them.',
+          'Duyệt row-by-row qua từng hóa đơn bằng con trỏ cur_invoices, tính toán tổng tiền kỳ vọng bằng hàm fn_calculate_parts_total, phát hiện các hóa đơn bị sai lệch số liệu và hỗ trợ tự động đối soát hòa đồng bộ (@auto_fix = 1).',
         parameters: [
           {
             name: 'auto_fix',
             type: 'boolean',
             required: false,
             defaultValue: false,
-            description: 'If true, automatically updates invoices with reconciled total amounts',
+            description: 'Nếu bật true, con trỏ sẽ tự động UPDATE cập nhật lại total_amount chính xác cho các hóa đơn sai lệch',
           },
         ],
       },
       {
         id: 'sp_alert_delayed_tickets',
-        name: 'Alert Delayed Tickets Cursor',
+        name: 'Quét & Cảnh Báo Phiếu Trễ Hạn Bằng Con Trỏ',
         sqlName: 'dbo.sp_alert_delayed_tickets',
         cursorName: 'cur_delayed_tickets CURSOR LOCAL FAST_FORWARD',
         cursorType: 'LOCAL FAST_FORWARD',
         description:
-          'Iterates through active tickets using a T-SQL cursor, calculates overdue days exceeding threshold, and yields an actionable alert dataset.',
+          'Sử dụng con trỏ cur_delayed_tickets duyệt qua danh sách các phiếu đang tiếp nhận/chẩn đoán/chờ linh kiện, tính số ngày quá hạn (DATEDIFF) vượt ngưỡng quy định và gom dữ liệu trả về bảng cảnh báo.',
         parameters: [
           {
             name: 'delay_days',
             type: 'number',
             required: false,
             defaultValue: 7,
-            description: 'Day threshold to classify a ticket as delayed / overdue',
+            description: 'Ngưỡng số ngày trôi qua để xếp phiếu vào diện trễ tiến độ (mặc định 7 ngày)',
           },
         ],
       },
@@ -70,7 +70,6 @@ export class CursorsService {
   async executeAuditInvoices(dto: { auto_fix?: boolean }) {
     const autoFix = Boolean(dto.auto_fix);
 
-    // Before state: All invoices
     const beforeInvoices = await this.dataSource.query(`
       SELECT id, ticket_id, labor_fee, discount_amount, total_amount, status,
              dbo.fn_calculate_parts_total(id) AS calculated_parts_total,
@@ -79,12 +78,10 @@ export class CursorsService {
       ORDER BY id ASC
     `);
 
-    // Execute stored procedure containing cursor
     const callSql = `EXEC dbo.sp_audit_invoices @auto_fix = @0;`;
     const resultRows = await this.dataSource.query(callSql, [autoFix ? 1 : 0]);
     const summary = resultRows?.[0] || { discrepancies_found: 0, was_auto_fixed: autoFix ? 1 : 0 };
 
-    // After state: All invoices
     const afterInvoices = await this.dataSource.query(`
       SELECT id, ticket_id, labor_fee, discount_amount, total_amount, status,
              dbo.fn_calculate_parts_total(id) AS calculated_parts_total,
@@ -111,7 +108,6 @@ export class CursorsService {
   async executeAlertDelayedTickets(dto: { delay_days?: number }) {
     const delayDays = dto.delay_days ?? 7;
 
-    // Before state: Active non-completed tickets
     const beforeTickets = await this.dataSource.query(
       `SELECT t.id, t.received_at, DATEDIFF(DAY, t.received_at, GETDATE()) AS days_elapsed,
               t.status, d.device_name, c.full_name AS customer_name
@@ -122,7 +118,6 @@ export class CursorsService {
        ORDER BY t.received_at ASC`,
     );
 
-    // Execute stored procedure containing cursor
     const callSql = `EXEC dbo.sp_alert_delayed_tickets @delay_days = @0;`;
     const delayedTickets = await this.dataSource.query(callSql, [delayDays]);
 
@@ -136,4 +131,3 @@ export class CursorsService {
     };
   }
 }
-

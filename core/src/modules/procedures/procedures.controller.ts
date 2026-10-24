@@ -1,10 +1,8 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Public } from '@/common/decorators/public.decorator';
 import { ProceduresService } from './procedures.service';
 
 @ApiTags('Stored Procedures')
-@Public()
 @Controller('procedures')
 export class ProceduresController {
   constructor(private readonly proceduresService: ProceduresService) {}

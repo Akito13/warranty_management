@@ -46,12 +46,3 @@ export enum PaymentMethod {
   CREDIT_CARD = 'credit_card',
 }
 
-/**
- * Metadata key for public routes.
- */
-export const IS_PUBLIC_KEY = 'isPublic';
-
-/**
- * Metadata key for roles authorization.
- */
-export const ROLES_KEY = 'roles';

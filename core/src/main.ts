@@ -97,14 +97,11 @@ async function bootstrap() {
       name: 'refreshToken',
       description: 'HttpOnly Refresh Token cookie',
     })
-    .addTag('Auth', 'Authentication and token lifecycle endpoints')
-    .addTag('Employees', 'Staff members and role-based access management')
-    .addTag('Customers', 'Client profiles and contact directory')
-    .addTag('Devices', 'Registered devices and warranty checks')
-    .addTag('Tickets', 'Repair tickets workflow and assignment')
-    .addTag('Parts', 'Spare parts catalog and inventory control')
-    .addTag('Invoices', 'Billing, spare part charges, and payments')
-    .addTag('Reports', 'Analytical dashboards and overdue alerts')
+    .addTag('Database Tables', 'Bảng dữ liệu - Duyệt và tìm kiếm 8 bảng trong database')
+    .addTag('Stored Procedures', 'Thủ tục lưu trữ - Thực thi 5 stored procedure nghiệp vụ')
+    .addTag('User Functions', 'Hàm người dùng - Tính toán và tra cứu với 3 UDF')
+    .addTag('Cursors', 'Con trỏ - Duyệt row-by-row với 2 stored procedure dùng cursor')
+    .addTag('Triggers', 'Trigger - Kiểm thử độc lập 7 trigger nghiệp vụ')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

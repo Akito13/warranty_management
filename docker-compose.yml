@@ -39,7 +39,7 @@ services:
         condition: service_healthy
     networks:
       - warranty_net
-    entrypoint: ["/bin/bash", "/docker-entrypoint-initdb.d/setup.sh"]
+    entrypoint: ["/bin/bash", "-c", "tr -d '\\r' < /docker-entrypoint-initdb.d/setup.sh | /bin/bash"]
     restart: "no"
 
   core:
