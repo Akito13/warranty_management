@@ -85,7 +85,7 @@ export interface TriggerCatalogItem {
   }>;
 }
 
-export interface TriggerTableComparison {
+export interface WorkbenchTableComparison {
   tableName: string;
   tableTitle: string;
   description?: string;
@@ -95,10 +95,30 @@ export interface TriggerTableComparison {
   statusNote?: string;
 }
 
+export type TriggerTableComparison = WorkbenchTableComparison;
+
+export interface ProcedurePreviewResult {
+  exactSql: string;
+  targetDesc: string;
+  tables: WorkbenchTableComparison[];
+}
+
+export interface CursorPreviewResult {
+  exactSql: string;
+  targetDesc: string;
+  tables: WorkbenchTableComparison[];
+}
+
+export interface FunctionPreviewResult {
+  exactSql: string;
+  targetDesc: string;
+  tables: WorkbenchTableComparison[];
+}
+
 export interface TriggerPreviewResult {
   exactSql: string;
   targetDesc: string;
-  tables: TriggerTableComparison[];
+  tables: WorkbenchTableComparison[];
 }
 
 export interface TriggerExecutionResult {

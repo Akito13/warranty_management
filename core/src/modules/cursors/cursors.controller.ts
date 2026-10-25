@@ -13,6 +13,24 @@ export class CursorsController {
     return this.cursorsService.getCatalog();
   }
 
+  @Post('preview')
+  @ApiOperation({ summary: 'Get preview tables and exact SQL before running cursor' })
+  async getPreview(
+    @Body()
+    body: {
+      cursor_id: string;
+      params?: Record<string, any>;
+    },
+  ) {
+    return this.cursorsService.getCursorPreview(body.cursor_id, body.params || {});
+  }
+
+  @Post('simulate-discrepancy')
+  @ApiOperation({ summary: 'Simulate data discrepancy on an unpaid invoice for cursor testing' })
+  async simulateDiscrepancy() {
+    return this.cursorsService.simulateDiscrepancy();
+  }
+
   @Post('audit-invoices')
   @ApiOperation({ summary: 'Execute dbo.sp_audit_invoices (cur_invoices cursor)' })
   async auditInvoices(@Body() body: { auto_fix?: boolean }) {

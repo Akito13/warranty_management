@@ -19,6 +19,18 @@ export class ProceduresController {
     return this.proceduresService.getSampleData();
   }
 
+  @Post('preview')
+  @ApiOperation({ summary: 'Get preview tables and exact SQL before running procedure' })
+  async getPreview(
+    @Body()
+    body: {
+      procedure_id: string;
+      params?: Record<string, any>;
+    },
+  ) {
+    return this.proceduresService.getProcedurePreview(body.procedure_id, body.params || {});
+  }
+
   @Post('receive-device')
   @ApiOperation({ summary: 'Execute dbo.sp_receive_device' })
   async receiveDevice(

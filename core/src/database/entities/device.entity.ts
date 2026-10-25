@@ -25,16 +25,19 @@ export class DeviceEntity {
   @Column({ name: 'customer_id', type: 'int' })
   customerId: number;
 
-  @Column({ name: 'device_name', type: 'nvarchar', length: 100 })
+  @Column({ name: 'device_name', type: 'nvarchar', length: 150 })
   deviceName: string;
 
-  @Column({ name: 'device_type', type: 'nvarchar', length: 50, nullable: true })
+  @Column({ name: 'device_type', type: 'varchar', length: 50, nullable: true })
   deviceType: string | null;
 
   @Column({ type: 'nvarchar', length: 50, nullable: true })
   brand: string | null;
 
-  @Column({ name: 'serial_number', type: 'varchar', length: 50, nullable: true })
+  @Column({ type: 'nvarchar', length: 50, nullable: true })
+  model: string | null;
+
+  @Column({ name: 'serial_number', type: 'varchar', length: 100, nullable: true })
   serialNumber: string | null;
 
   @Column({ name: 'is_under_warranty', type: 'bit', default: false })

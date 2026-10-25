@@ -104,30 +104,6 @@ export class TriggersService {
         ],
       },
       {
-        id: "trg_invoices_labor_update",
-        name: "trg_invoices_labor_update",
-        table: "invoices",
-        timing: "AFTER INSERT, UPDATE",
-        type: "cascade",
-        typeLabel: "Tự động tính lại tổng tiền khi đổi tiền công",
-        description:
-          "Lắng nghe sự kiện cập nhật tiền công (labor_fee) hoặc chiết khấu (discount_amount) trên bảng invoices. Trigger tự động tính lại total_amount = labor_fee + fn_calculate_parts_total - discount_amount.",
-        scenarios: [
-          {
-            id: "labor_fee_changed_recalc",
-            title:
-              "Kịch bản 3: Sửa tiền công labor_fee -> Tự động tính lại tổng tiền (Trigger MODIFIES)",
-            description:
-              "Cập nhật tăng tiền công dịch vụ thêm $50.00. Trigger tự động tính lại tổng tiền hóa đơn invoices.total_amount tăng theo.",
-            expectedOutcome: "MODIFIED",
-            actionDescription:
-              "UPDATE invoices SET labor_fee = labor_fee + 50.00",
-            sqlTemplate:
-              "UPDATE invoices SET labor_fee = labor_fee + 50.00 WHERE id = {invoice_id};",
-          },
-        ],
-      },
-      {
         id: "trg_tickets_workflow_guard",
         name: "trg_tickets_workflow_guard",
         table: "tickets",
@@ -197,30 +173,6 @@ export class TriggersService {
               'UPDATE tickets SET status = "inspecting" -> INSERT INTO ticket_status_history',
             sqlTemplate:
               "UPDATE tickets SET status = 'inspecting' WHERE id = {ticket_id};",
-          },
-        ],
-      },
-      {
-        id: "trg_invoice_items_freeze_paid",
-        name: "trg_invoice_items_freeze_paid",
-        table: "invoice_items",
-        timing: "AFTER INSERT, UPDATE, DELETE (Ưu tiên First)",
-        type: "guard",
-        typeLabel: "Đóng băng linh kiện trên hóa đơn đã thanh toán",
-        description:
-          'Tính bất biến tài chính: Ngăn chặn tuyệt đối việc thêm, sửa hoặc xóa linh kiện trên các hóa đơn đã thanh toán (status = "paid"). Trigger chạy ở mức ưu tiên First và THROW lỗi 50035.',
-        scenarios: [
-          {
-            id: "paid_invoice_items_freeze_fail",
-            title:
-              "Kịch bản 6: Chặn thêm linh kiện vào hóa đơn đã thanh toán (Trigger STOP)",
-            description:
-              'Cố tình chèn thêm linh kiện vào hóa đơn đã hoàn tất thanh toán (status = "paid"). Trigger chặn lại với lỗi 50035.',
-            expectedOutcome: "STOPPED",
-            actionDescription:
-              'INSERT INTO invoice_items WHERE invoice.status = "paid"',
-            sqlTemplate:
-              "INSERT INTO invoice_items (invoice_id, part_id, quantity, unit_price) VALUES ({paid_invoice_id}, {part_id}, 1, {unit_price});",
           },
         ],
       },
@@ -409,45 +361,6 @@ export class TriggersService {
         };
       }
 
-      case "trg_invoices_labor_update": {
-        const inv = await this.dataSource.query(
-          `SELECT TOP 1 id, ticket_id, status, labor_fee, discount_amount, total_amount, updated_at FROM invoices WHERE status = 'unpaid' ORDER BY id DESC`,
-        );
-        const invoiceId = inv?.[0]?.id || 18;
-
-        const beforeInvoice = await this.dataSource.query(
-          `SELECT id, ticket_id, status, labor_fee, discount_amount, total_amount, updated_at FROM invoices WHERE id = @0`,
-          [invoiceId],
-        );
-        const beforeInvoiceItems = await this.dataSource.query(
-          `SELECT id, invoice_id, part_id, quantity, unit_price, total_price FROM invoice_items WHERE invoice_id = @0`,
-          [invoiceId],
-        );
-
-        const exactSql = `-- Mục tiêu: Tăng tiền công labor_fee thêm $50.00 trên Hóa đơn #${invoiceId}\nUPDATE invoices\nSET labor_fee = labor_fee + 50.00, updated_at = GETDATE()\nWHERE id = ${invoiceId};\n-- Trigger sẽ bắt sự kiện UPDATE(labor_fee) và tự động tính lại total_amount`;
-
-        return {
-          exactSql,
-          targetDesc: `Hóa đơn: #${invoiceId} | Tiền công hiện tại: $${inv?.[0]?.labor_fee} | Tăng thêm: $50.00`,
-          tables: [
-            {
-              tableName: "invoices",
-              tableTitle: `Bảng thao tác trực tiếp: invoices (Hóa đơn #${invoiceId})`,
-              description: `Cập nhật labor_fee tăng $50.00 -> Trigger tự động tính lại total_amount`,
-              highlightColumns: ["labor_fee", "total_amount"],
-              beforeRows: beforeInvoice,
-            },
-            {
-              tableName: "invoice_items",
-              tableTitle: `Bảng tham chiếu tiền linh kiện: invoice_items (Hóa đơn #${invoiceId})`,
-              description: `Tiền linh kiện cố định, tổng tiền tăng phản ánh chính xác tiền công tăng`,
-              highlightColumns: ["total_price"],
-              beforeRows: beforeInvoiceItems,
-            },
-          ],
-        };
-      }
-
       case "trg_tickets_workflow_guard": {
         if (scenarioId === "guard_missing_technician") {
           const t = await this.dataSource.query(
@@ -546,47 +459,6 @@ export class TriggersService {
         };
       }
 
-      case "trg_invoice_items_freeze_paid": {
-        const inv = await this.dataSource.query(
-          `SELECT TOP 1 id, ticket_id, status, labor_fee, discount_amount, total_amount, payment_method, FORMAT(paid_at, 'yyyy-MM-dd HH:mm') AS paid_at FROM invoices WHERE status = 'paid' ORDER BY id DESC`,
-        );
-        const paidInvoiceId = inv?.[0]?.id || 1;
-        const part = await this.dataSource.query(
-          `SELECT TOP 1 id, part_name, price FROM parts WHERE stock_quantity > 0 ORDER BY id ASC`,
-        );
-        const partId = part?.[0]?.id || 1;
-        const partName = part?.[0]?.part_name || "Linh kiện";
-        const unitPrice = Number(part?.[0]?.price || 50);
-
-        const beforeInvoiceItems = await this.dataSource.query(
-          `SELECT id, invoice_id, part_id, quantity, unit_price, total_price, created_at FROM invoice_items WHERE invoice_id = @0 ORDER BY id DESC`,
-          [paidInvoiceId],
-        );
-
-        const exactSql = `-- Mục tiêu: Cố tình chèn thêm linh kiện #${partId} (${partName}) vào Hóa đơn #${paidInvoiceId} đã thanh toán (status = 'paid')\nINSERT INTO invoice_items (invoice_id, part_id, quantity, unit_price)\nVALUES (${paidInvoiceId}, ${partId}, 1, ${unitPrice.toFixed(2)});\n-- Trigger trg_invoice_items_freeze_paid (First) chặn lại với lỗi 50035`;
-
-        return {
-          exactSql,
-          targetDesc: `Hóa đơn: #${paidInvoiceId} (ĐÃ THANH TOÁN: status = 'paid') | Linh kiện: #${partId} (${partName})`,
-          tables: [
-            {
-              tableName: "invoice_items",
-              tableTitle: `Bảng thao tác trực tiếp: invoice_items (Hóa đơn đã thanh toán #${paidInvoiceId})`,
-              description: `Cố tình thêm linh kiện vào hóa đơn đã đóng băng thanh toán`,
-              highlightColumns: ["quantity", "unit_price", "total_price"],
-              beforeRows: beforeInvoiceItems,
-            },
-            {
-              tableName: "invoices",
-              tableTitle: `Bảng kiểm tra điều kiện đóng băng: invoices (Hóa đơn #${paidInvoiceId})`,
-              description: `Hóa đơn đã thanh toán (status = 'paid') là bất biến, không cho phép sửa đổi linh kiện`,
-              highlightColumns: ["status", "paid_at"],
-              beforeRows: inv,
-            },
-          ],
-        };
-      }
-
       case "trg_invoices_freeze_paid_amounts": {
         const inv = await this.dataSource.query(
           `SELECT TOP 1 id, ticket_id, status, labor_fee, discount_amount, total_amount, payment_method, FORMAT(paid_at, 'yyyy-MM-dd HH:mm') AS paid_at, updated_at FROM invoices WHERE status = 'paid' ORDER BY id DESC`,
@@ -632,17 +504,11 @@ export class TriggersService {
       case "trg_invoices_total_amount":
         return this.testInvoicesTotalAmount(scenario_id, params);
 
-      case "trg_invoices_labor_update":
-        return this.testInvoicesLaborUpdate(scenario_id, params);
-
       case "trg_tickets_workflow_guard":
         return this.testTicketsWorkflowGuard(scenario_id, params);
 
       case "trg_tickets_audit_history":
         return this.testTicketsAuditHistory(scenario_id, params);
-
-      case "trg_invoice_items_freeze_paid":
-        return this.testInvoiceItemsFreezePaid(scenario_id, params);
 
       case "trg_invoices_freeze_paid_amounts":
         return this.testInvoicesFreezePaidAmounts(scenario_id, params);
@@ -930,100 +796,6 @@ export class TriggersService {
             tableTitle: `Bảng thao tác trực tiếp: invoice_items (Chi tiết Hóa đơn #${invoiceId})`,
             beforeRows: beforeInvoiceItems,
             afterRows: beforeInvoiceItems,
-          },
-        ],
-        message: `${triggerName} đã chặn thao tác này do: ${err.message}`,
-      };
-    }
-  }
-
-  /**
-   * 3. trg_invoices_labor_update
-   */
-  private async testInvoicesLaborUpdate(
-    scenarioId: string,
-    params: Record<string, any>,
-  ) {
-    const triggerName = "trg_invoices_labor_update";
-
-    let invoiceId = Number(params.invoice_id);
-    if (!invoiceId) {
-      const inv = await this.dataSource.query(
-        `SELECT TOP 1 id FROM invoices WHERE status = 'unpaid' ORDER BY id DESC`,
-      );
-      invoiceId = inv?.[0]?.id || 18;
-    }
-
-    const beforeInvoice = await this.dataSource.query(
-      `SELECT id, ticket_id, status, labor_fee, discount_amount, total_amount, updated_at FROM invoices WHERE id = @0`,
-      [invoiceId],
-    );
-    const beforeInvoiceItems = await this.dataSource.query(
-      `SELECT id, invoice_id, part_id, quantity, unit_price, total_price FROM invoice_items WHERE invoice_id = @0`,
-      [invoiceId],
-    );
-
-    const addFee = Number(params.labor_delta) || 50;
-    const exactSql = `-- Mục tiêu: Cập nhật tăng tiền công labor_fee thêm $${addFee.toFixed(2)} trên Hóa đơn #${invoiceId}\nUPDATE invoices\nSET labor_fee = labor_fee + ${addFee.toFixed(2)}, updated_at = GETDATE()\nWHERE id = ${invoiceId};\n-- Trigger sẽ bắt sự kiện UPDATE(labor_fee) và tự động tính lại total_amount`;
-
-    try {
-      await this.dataSource.query(
-        `UPDATE invoices SET labor_fee = labor_fee + @0, updated_at = GETDATE() WHERE id = @1`,
-        [addFee, invoiceId],
-      );
-
-      const afterInvoice = await this.dataSource.query(
-        `SELECT id, ticket_id, status, labor_fee, discount_amount, total_amount, updated_at FROM invoices WHERE id = @0`,
-        [invoiceId],
-      );
-
-      return {
-        success: true,
-        stopped: false,
-        triggerName,
-        exactSql,
-        targetInfo: {
-          invoice_id: invoiceId,
-          before_labor_fee: beforeInvoice?.[0]?.labor_fee,
-          after_labor_fee: afterInvoice?.[0]?.labor_fee,
-          before_total: beforeInvoice?.[0]?.total_amount,
-          after_total: afterInvoice?.[0]?.total_amount,
-        },
-        tables: [
-          {
-            tableName: "invoices",
-            tableTitle: `Bảng thao tác trực tiếp: invoices (Hóa đơn #${invoiceId})`,
-            description: `Cập nhật labor_fee tăng $${addFee.toFixed(2)}`,
-            highlightColumns: ["labor_fee", "total_amount"],
-            beforeRows: beforeInvoice,
-            afterRows: afterInvoice,
-            statusNote: `✓ [TỰ ĐỘNG TÍNH LẠI] labor_fee tăng từ $${beforeInvoice?.[0]?.labor_fee} lên $${afterInvoice?.[0]?.labor_fee} -> Trigger tự động tính lại total_amount = $${afterInvoice?.[0]?.total_amount}.`,
-          },
-          {
-            tableName: "invoice_items",
-            tableTitle: `Bảng tham chiếu tiền linh kiện: invoice_items (Hóa đơn #${invoiceId})`,
-            description: `Linh kiện giữ nguyên, tổng tiền thay đổi hoàn toàn do cập nhật tiền công`,
-            highlightColumns: ["total_price"],
-            beforeRows: beforeInvoiceItems,
-            afterRows: beforeInvoiceItems,
-            statusNote: `Tiền linh kiện trong hóa đơn cố định, không thay đổi.`,
-          },
-        ],
-        message: `Trigger ${triggerName} đã tính lại tổng tiền: Tiền công đổi từ $${beforeInvoice?.[0]?.labor_fee} sang $${afterInvoice?.[0]?.labor_fee}, tổng tiền mới = $${afterInvoice?.[0]?.total_amount}.`,
-      };
-    } catch (err: any) {
-      return {
-        success: false,
-        stopped: true,
-        triggerName,
-        reason: err.message,
-        exactSql,
-        tables: [
-          {
-            tableName: "invoices",
-            tableTitle: `Bảng thao tác trực tiếp: invoices (Hóa đơn #${invoiceId})`,
-            beforeRows: beforeInvoice,
-            afterRows: beforeInvoice,
           },
         ],
         message: `${triggerName} đã chặn thao tác này do: ${err.message}`,
@@ -1336,107 +1108,6 @@ export class TriggersService {
           },
         ],
         message: `${triggerName} đã chặn thao tác này do: ${err.message}`,
-      };
-    }
-  }
-
-  /**
-   * 6. trg_invoice_items_freeze_paid
-   */
-  private async testInvoiceItemsFreezePaid(
-    scenarioId: string,
-    params: Record<string, any>,
-  ) {
-    const triggerName = "trg_invoice_items_freeze_paid";
-
-    let invoiceId = Number(params.invoice_id);
-    if (!invoiceId) {
-      const inv = await this.dataSource.query(
-        `SELECT TOP 1 id FROM invoices WHERE status = 'paid' ORDER BY id DESC`,
-      );
-      invoiceId = inv?.[0]?.id || 1;
-    }
-
-    const beforeInvoice = await this.dataSource.query(
-      `SELECT id, ticket_id, status, labor_fee, discount_amount, total_amount, payment_method, FORMAT(paid_at, 'yyyy-MM-dd HH:mm') AS paid_at FROM invoices WHERE id = @0`,
-      [invoiceId],
-    );
-    const beforeInvoiceItems = await this.dataSource.query(
-      `SELECT id, invoice_id, part_id, quantity, unit_price, total_price, created_at FROM invoice_items WHERE invoice_id = @0 ORDER BY id DESC`,
-      [invoiceId],
-    );
-
-    const part = await this.dataSource.query(
-      `SELECT TOP 1 id, part_name, price FROM parts WHERE stock_quantity > 0 ORDER BY id ASC`,
-    );
-    const partId = part?.[0]?.id || 1;
-    const partName = part?.[0]?.part_name || "Linh kiện";
-    const unitPrice = Number(part?.[0]?.price || 50);
-
-    const exactSql = `-- Mục tiêu: Cố tình chèn thêm linh kiện #${partId} (${partName}) vào Hóa đơn #${invoiceId} đã thanh toán (status = 'paid')\nINSERT INTO invoice_items (invoice_id, part_id, quantity, unit_price)\nVALUES (${invoiceId}, ${partId}, 1, ${unitPrice.toFixed(2)});\n-- Trigger trg_invoice_items_freeze_paid (chạy ưu tiên First) sẽ chặn lại với lỗi 50035`;
-
-    try {
-      await this.dataSource.query(
-        `INSERT INTO invoice_items (invoice_id, part_id, quantity, unit_price) VALUES (@0, @1, 1, @2)`,
-        [invoiceId, partId, unitPrice],
-      );
-
-      return {
-        success: true,
-        stopped: false,
-        triggerName,
-        exactSql,
-        message:
-          "Thao tác thực hiện thành công bất ngờ mà không bị trigger chặn lại.",
-      };
-    } catch (err: any) {
-      const reason =
-        err.message ||
-        "Cannot add, modify, or remove spare parts on an already paid invoice.";
-
-      const afterInvoice = await this.dataSource.query(
-        `SELECT id, ticket_id, status, labor_fee, discount_amount, total_amount, payment_method, FORMAT(paid_at, 'yyyy-MM-dd HH:mm') AS paid_at FROM invoices WHERE id = @0`,
-        [invoiceId],
-      );
-      const afterInvoiceItems = await this.dataSource.query(
-        `SELECT id, invoice_id, part_id, quantity, unit_price, total_price, created_at FROM invoice_items WHERE invoice_id = @0 ORDER BY id DESC`,
-        [invoiceId],
-      );
-
-      return {
-        success: false,
-        stopped: true,
-        triggerName,
-        reason,
-        errorCode: err.number || 50035,
-        exactSql,
-        targetInfo: {
-          invoice_id: invoiceId,
-          invoice_status: beforeInvoice?.[0]?.status,
-          part_id: partId,
-          part_name: partName,
-        },
-        tables: [
-          {
-            tableName: "invoice_items",
-            tableTitle: `Bảng thao tác trực tiếp: invoice_items (Chi tiết Hóa đơn đã thanh toán #${invoiceId})`,
-            description: `Cố tình thêm linh kiện vào hóa đơn đã đóng băng thanh toán`,
-            highlightColumns: ["quantity", "unit_price", "total_price"],
-            beforeRows: beforeInvoiceItems,
-            afterRows: afterInvoiceItems,
-            statusNote: `⛔ [ROLLBACK THÀNH CÔNG] Giao dịch bị hủy. Không có linh kiện nào được thêm vào hóa đơn đã thanh toán #${invoiceId}.`,
-          },
-          {
-            tableName: "invoices",
-            tableTitle: `Bảng kiểm tra điều kiện đóng băng: invoices (Hóa đơn #${invoiceId})`,
-            description: `Hóa đơn đã thanh toán là bất biến`,
-            highlightColumns: ["status", "paid_at"],
-            beforeRows: beforeInvoice,
-            afterRows: afterInvoice,
-            statusNote: `🔒 [BẢO TOÀN TRẠNG THÁI] Hóa đơn vẫn giữ nguyên status = 'paid' và số tiền ban đầu.`,
-          },
-        ],
-        message: `${triggerName} đã chặn thao tác này do: ${reason}`,
       };
     }
   }

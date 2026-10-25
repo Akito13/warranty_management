@@ -118,8 +118,6 @@ export class TablesService {
       const copy = { ...r };
       if (tableName === 'employees') {
         if ('password_hash' in copy) copy.password_hash = '***MASKED***';
-        if ('refresh_token_hash' in copy && copy.refresh_token_hash)
-          copy.refresh_token_hash = '***MASKED***';
       }
       return copy;
     });

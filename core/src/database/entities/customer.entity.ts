@@ -21,13 +21,13 @@ export class CustomerEntity {
   @Column({ name: 'full_name', type: 'nvarchar', length: 100 })
   fullName: string;
 
-  @Column({ name: 'phone_number', type: 'varchar', length: 15 })
+  @Column({ name: 'phone_number', type: 'varchar', length: 15, unique: true })
   phoneNumber: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   email: string | null;
 
-  @Column({ type: 'nvarchar', length: 200, nullable: true })
+  @Column({ type: 'nvarchar', length: 255, nullable: true })
   address: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

@@ -44,10 +44,10 @@ export class TicketEntity {
   @Column({ name: 'issue_description', type: 'nvarchar', length: 500, nullable: true })
   issueDescription: string | null;
 
-  @Column({ name: 'initial_condition', type: 'nvarchar', length: 200, nullable: true })
+  @Column({ name: 'initial_condition', type: 'nvarchar', length: 500, nullable: true })
   initialCondition: string | null;
 
-  @Column({ type: 'nvarchar', length: 200, nullable: true })
+  @Column({ type: 'nvarchar', length: 255, nullable: true })
   accessories: string | null;
 
   @Column({ name: 'received_at', type: 'datetime' })

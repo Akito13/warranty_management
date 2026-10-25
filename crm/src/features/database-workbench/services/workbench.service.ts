@@ -1,8 +1,11 @@
 import { api } from '@/lib/api-client';
 import {
   CursorCatalogItem,
+  CursorPreviewResult,
   FunctionCatalogItem,
+  FunctionPreviewResult,
   ProcedureCatalogItem,
+  ProcedurePreviewResult,
   TableDataResponse,
   TableOverviewItem,
   TriggerCatalogItem,
@@ -34,6 +37,13 @@ export const workbenchService = {
     return api.get<any>('/procedures/sample-data');
   },
 
+  async getProcedurePreview(procedureId: string, params: any = {}): Promise<ProcedurePreviewResult> {
+    return api.post<ProcedurePreviewResult>('/procedures/preview', {
+      procedure_id: procedureId,
+      params,
+    });
+  },
+
   async executeReceiveDevice(params: any): Promise<any> {
     return api.post<any>('/procedures/receive-device', params);
   },
@@ -63,6 +73,13 @@ export const workbenchService = {
     return api.get<any>('/functions/sample-data');
   },
 
+  async getFunctionPreview(functionId: string, params: any = {}): Promise<FunctionPreviewResult> {
+    return api.post<FunctionPreviewResult>('/functions/preview', {
+      function_id: functionId,
+      params,
+    });
+  },
+
   async executeCalculatePartsTotal(params: any): Promise<any> {
     return api.post<any>('/functions/calculate-parts-total', params);
   },
@@ -78,6 +95,17 @@ export const workbenchService = {
   // 4. Cursors
   async getCursorsCatalog(): Promise<CursorCatalogItem[]> {
     return api.get<CursorCatalogItem[]>('/cursors');
+  },
+
+  async getCursorPreview(cursorId: string, params: any = {}): Promise<CursorPreviewResult> {
+    return api.post<CursorPreviewResult>('/cursors/preview', {
+      cursor_id: cursorId,
+      params,
+    });
+  },
+
+  async simulateCursorDiscrepancy(): Promise<any> {
+    return api.post<any>('/cursors/simulate-discrepancy', {});
   },
 
   async executeAuditInvoices(params: any): Promise<any> {

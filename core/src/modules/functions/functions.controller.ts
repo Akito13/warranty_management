@@ -19,6 +19,18 @@ export class FunctionsController {
     return this.functionsService.getSampleData();
   }
 
+  @Post('preview')
+  @ApiOperation({ summary: 'Get preview tables and exact SQL before running function' })
+  async getPreview(
+    @Body()
+    body: {
+      function_id: string;
+      params?: Record<string, any>;
+    },
+  ) {
+    return this.functionsService.getFunctionPreview(body.function_id, body.params || {});
+  }
+
   @Post('calculate-parts-total')
   @ApiOperation({ summary: 'Execute dbo.fn_calculate_parts_total' })
   async calculatePartsTotal(@Body() body: { invoice_id: number }) {

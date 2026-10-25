@@ -17,14 +17,11 @@ export class EmployeeEntity {
   @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 
-  @Column({ type: 'nvarchar', length: 50, unique: true })
+  @Column({ type: 'varchar', length: 50, unique: true })
   username: string;
 
   @Column({ name: 'password_hash', type: 'varchar', length: 255, select: false })
   passwordHash: string;
-
-  @Column({ name: 'refresh_token_hash', type: 'varchar', length: 255, nullable: true, select: false })
-  refreshTokenHash: string | null;
 
   @Column({ name: 'full_name', type: 'nvarchar', length: 100 })
   fullName: string;
@@ -32,7 +29,7 @@ export class EmployeeEntity {
   @Column({ type: 'varchar', length: 20 })
   role: EmployeeRole;
 
-  @Column({ name: 'phone_number', type: 'varchar', length: 15, nullable: true })
+  @Column({ name: 'phone_number', type: 'varchar', length: 20, nullable: true })
   phoneNumber: string | null;
 
   @Column({ type: 'varchar', length: 100, nullable: true })

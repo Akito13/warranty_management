@@ -31,12 +31,12 @@ async function bootstrap() {
   app.setGlobalPrefix(apiPrefix);
 
   // Register Fastify Cookie plugin
-  await app.register(fastifyCookie, {
+  await app.register(fastifyCookie as any, {
     secret: cookieSecret,
   });
 
   // Register Fastify Helmet for HTTP security headers
-  await app.register(fastifyHelmet, {
+  await app.register(fastifyHelmet as any, {
     contentSecurityPolicy: false, // Disabled for local Swagger UI rendering
   });
 

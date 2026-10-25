@@ -95,11 +95,11 @@ export const TriggersTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* 1. Thanh chọn 7 Triggers */}
+      {/* 1. Thanh chọn 5 Triggers */}
       <div>
         <div className="flex items-center justify-between mb-2.5">
           <h3 className="text-sm font-bold text-stone-900">
-            Kiểm Thử 7 Triggers Nghiệp Vụ (Sự Kiện Độc Lập)
+            Kiểm Thử 5 Triggers Nghiệp Vụ (Sự Kiện Độc Lập)
           </h3>
           <span className="text-xs text-stone-500 font-mono">
             {catalog.length} triggers được định nghĩa trong init-db.sql

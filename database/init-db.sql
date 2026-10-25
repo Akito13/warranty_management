@@ -32,9 +32,9 @@ GO
 CREATE TABLE customers (
     id INT IDENTITY(1,1) CONSTRAINT pk_customers PRIMARY KEY,
     full_name NVARCHAR(100) NOT NULL,
-    phone_number VARCHAR(15) NOT NULL,
+    phone_number VARCHAR(20) NOT NULL CONSTRAINT uq_customers_phone_number UNIQUE,
     email VARCHAR(100) NULL,
-    address NVARCHAR(200) NULL,
+    address NVARCHAR(255) NULL,
     created_at DATETIME NOT NULL CONSTRAINT df_customers_created_at DEFAULT GETDATE(),
     updated_at DATETIME NOT NULL CONSTRAINT df_customers_updated_at DEFAULT GETDATE()
 );
@@ -47,12 +47,11 @@ GO
 -- 1.2. Employees Table
 CREATE TABLE employees (
     id INT IDENTITY(1,1) CONSTRAINT pk_employees PRIMARY KEY,
-    username NVARCHAR(50) NOT NULL CONSTRAINT uq_employees_username UNIQUE,
+    username VARCHAR(50) NOT NULL CONSTRAINT uq_employees_username UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    refresh_token_hash VARCHAR(255) NULL,
     full_name NVARCHAR(100) NOT NULL,
     role VARCHAR(20) NOT NULL CONSTRAINT ck_employees_role CHECK (role IN ('receptionist', 'technician', 'manager')),
-    phone_number VARCHAR(15) NULL,
+    phone_number VARCHAR(20) NULL,
     email VARCHAR(100) NULL,
     is_active BIT NOT NULL CONSTRAINT df_employees_is_active DEFAULT 1,
     created_at DATETIME NOT NULL CONSTRAINT df_employees_created_at DEFAULT GETDATE(),
@@ -67,10 +66,11 @@ GO
 CREATE TABLE devices (
     id INT IDENTITY(1,1) CONSTRAINT pk_devices PRIMARY KEY,
     customer_id INT NOT NULL,
-    device_name NVARCHAR(100) NOT NULL,
-    device_type NVARCHAR(50) NULL,
+    device_name NVARCHAR(150) NOT NULL,
+    device_type VARCHAR(50) NULL,
     brand NVARCHAR(50) NULL,
-    serial_number VARCHAR(50) NULL,
+    model NVARCHAR(50) NULL,
+    serial_number VARCHAR(100) NULL CONSTRAINT uq_devices_serial_number UNIQUE,
     is_under_warranty BIT NOT NULL CONSTRAINT df_devices_is_under_warranty DEFAULT 0,
     warranty_expiry_date DATE NULL,
     created_at DATETIME NOT NULL CONSTRAINT df_devices_created_at DEFAULT GETDATE(),
@@ -79,15 +79,14 @@ CREATE TABLE devices (
 );
 GO
 
--- Filtered Unique Index: Allows multiple NULLs without collision
-CREATE UNIQUE NONCLUSTERED INDEX uq_devices_serial_number ON devices(serial_number) WHERE serial_number IS NOT NULL;
 CREATE INDEX ix_devices_customer_id ON devices(customer_id);
 GO
 
 -- 1.4. Spare Parts Inventory Table
 CREATE TABLE parts (
     id INT IDENTITY(1,1) CONSTRAINT pk_parts PRIMARY KEY,
-    part_name NVARCHAR(100) NOT NULL,
+    part_code VARCHAR(50) NOT NULL CONSTRAINT uq_parts_part_code UNIQUE,
+    part_name NVARCHAR(150) NOT NULL,
     unit VARCHAR(20) NOT NULL,
     price DECIMAL(18,2) NOT NULL CONSTRAINT ck_parts_price CHECK (price >= 0),
     stock_quantity INT NOT NULL CONSTRAINT ck_parts_stock CHECK (stock_quantity >= 0),
@@ -97,6 +96,7 @@ CREATE TABLE parts (
 GO
 
 CREATE INDEX ix_parts_part_name ON parts(part_name);
+CREATE INDEX ix_parts_part_code ON parts(part_code);
 CREATE INDEX ix_parts_stock_quantity ON parts(stock_quantity);
 GO
 
@@ -109,8 +109,8 @@ CREATE TABLE tickets (
     ticket_type VARCHAR(20) NOT NULL CONSTRAINT df_tickets_ticket_type DEFAULT 'repair'
         CONSTRAINT ck_tickets_ticket_type CHECK (ticket_type IN ('repair', 'warranty', 're_repair')),
     issue_description NVARCHAR(500) NULL,
-    initial_condition NVARCHAR(200) NULL,
-    accessories NVARCHAR(200) NULL,
+    initial_condition NVARCHAR(500) NULL,
+    accessories NVARCHAR(255) NULL,
     received_at DATETIME NOT NULL CONSTRAINT df_tickets_received_at DEFAULT GETDATE(),
     fault_cause NVARCHAR(500) NULL,
     repair_solution NVARCHAR(500) NULL,
@@ -324,34 +324,6 @@ BEGIN
 END;
 GO
 
--- 3.3. Update invoice total_amount when labor_fee or discount_amount changes
-CREATE OR ALTER TRIGGER trg_invoices_labor_update
-ON invoices AFTER INSERT, UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    IF NOT EXISTS (SELECT 1 FROM deleted) OR UPDATE(labor_fee) OR UPDATE(discount_amount)
-    BEGIN
-        UPDATE inv
-        SET inv.discount_amount = CASE 
-                WHEN t.ticket_type IN ('warranty', 're_repair') 
-                THEN inv.labor_fee + dbo.fn_calculate_parts_total(inv.id)
-                ELSE inv.discount_amount 
-            END,
-            inv.total_amount = CASE 
-                WHEN t.ticket_type IN ('warranty', 're_repair') THEN 0
-                WHEN (inv.labor_fee + dbo.fn_calculate_parts_total(inv.id) - (CASE WHEN t.ticket_type IN ('warranty', 're_repair') THEN inv.labor_fee + dbo.fn_calculate_parts_total(inv.id) ELSE inv.discount_amount END)) < 0 THEN 0
-                ELSE (inv.labor_fee + dbo.fn_calculate_parts_total(inv.id) - (CASE WHEN t.ticket_type IN ('warranty', 're_repair') THEN inv.labor_fee + dbo.fn_calculate_parts_total(inv.id) ELSE inv.discount_amount END))
-            END,
-            inv.updated_at = GETDATE()
-        FROM invoices inv
-        JOIN tickets t ON t.id = inv.ticket_id
-        JOIN inserted i ON i.id = inv.id
-        WHERE inv.status = 'unpaid';
-    END
-END;
-GO
-
 -- 3.4. Tickets workflow guard & state machine validation
 CREATE OR ALTER TRIGGER trg_tickets_workflow_guard
 ON tickets AFTER INSERT, UPDATE
@@ -423,31 +395,6 @@ BEGIN
 END;
 GO
 
--- 3.6. Financial Immutability: Freeze spare parts modifications on paid invoices
-CREATE OR ALTER TRIGGER trg_invoice_items_freeze_paid
-ON invoice_items AFTER INSERT, UPDATE, DELETE
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF EXISTS (
-        SELECT 1 
-        FROM (SELECT invoice_id FROM inserted UNION SELECT invoice_id FROM deleted) x
-        JOIN invoices inv ON inv.id = x.invoice_id
-        WHERE inv.status = 'paid'
-    )
-    BEGIN
-        ROLLBACK TRANSACTION;
-        THROW 50035, N'Cannot add, modify, or remove spare parts on an already paid invoice.', 1;
-    END
-END;
-GO
-
-EXEC sp_settriggerorder @triggername = 'trg_invoice_items_freeze_paid', @order = 'First', @stmttype = 'INSERT';
-EXEC sp_settriggerorder @triggername = 'trg_invoice_items_freeze_paid', @order = 'First', @stmttype = 'UPDATE';
-EXEC sp_settriggerorder @triggername = 'trg_invoice_items_freeze_paid', @order = 'First', @stmttype = 'DELETE';
-GO
-
 -- 3.7. Financial Immutability: Freeze financial fee edits on paid invoices
 CREATE OR ALTER TRIGGER trg_invoices_freeze_paid_amounts
 ON invoices AFTER UPDATE
@@ -482,8 +429,8 @@ CREATE OR ALTER PROCEDURE dbo.sp_receive_device
     @device_id         INT,
     @receptionist_id   INT,
     @issue_description NVARCHAR(500),
-    @initial_condition NVARCHAR(200) = NULL,
-    @accessories      NVARCHAR(200) = NULL,
+    @initial_condition NVARCHAR(500) = NULL,
+    @accessories      NVARCHAR(255) = NULL,
     @ticket_type       VARCHAR(20)   = 'repair',
     @ticket_id         INT OUTPUT
 AS
@@ -718,14 +665,14 @@ BEGIN
         ticket_id INT,
         customer_name NVARCHAR(100),
         phone_number VARCHAR(20),
-        device_name NVARCHAR(100),
+        device_name NVARCHAR(150),
         status VARCHAR(30),
         overdue_days INT,
         assigned_technician NVARCHAR(100)
     );
 
     DECLARE @t_id INT, @c_name NVARCHAR(100), @phone VARCHAR(20),
-            @d_name NVARCHAR(100), @st VARCHAR(30), @days INT, @tech NVARCHAR(100);
+            @d_name NVARCHAR(150), @st VARCHAR(30), @days INT, @tech NVARCHAR(100);
 
     DECLARE cur_delayed_tickets CURSOR LOCAL FAST_FORWARD FOR
         SELECT t.id AS ticket_id,
@@ -805,7 +752,7 @@ BEGIN
         THROW 50060, N'CSV file path cannot be empty.', 1;
 
     CREATE TABLE #staging_parts (
-        part_name      NVARCHAR(100),
+        part_name      NVARCHAR(150),
         unit           VARCHAR(20),
         price          DECIMAL(18,2),
         stock_quantity INT
@@ -965,8 +912,8 @@ BEGIN
         device_id         INT,
         ticket_type       VARCHAR(20),
         issue_description NVARCHAR(500),
-        initial_condition NVARCHAR(200),
-        accessories       NVARCHAR(200),
+        initial_condition NVARCHAR(500),
+        accessories       NVARCHAR(255),
         estimated_cost    DECIMAL(18,2)
     );
 
@@ -1100,51 +1047,51 @@ INSERT INTO employees (username, password_hash, full_name, role, phone_number, e
 GO
 
 -- 6.3. Seed Spare Parts (20 rows)
-INSERT INTO parts (part_name, unit, price, stock_quantity) VALUES
-(N'RAM DDR4 8GB 3200MHz', 'piece', 650000, 25),
-(N'SSD NVMe 512GB', 'piece', 1150000, 18),
-(N'Laptop Battery 4-Cell', 'piece', 950000, 12),
-(N'Laptop Keyboard Backlit', 'piece', 450000, 15),
-(N'Laptop Cooling Fan Module', 'piece', 280000, 20),
-(N'Laptop Screen 14 inch Full HD', 'piece', 1850000, 6),
-(N'OLED Phone Display Assembly', 'piece', 2500000, 8),
-(N'Smartphone Battery Li-Po', 'piece', 450000, 30),
-(N'USB Type-C Charging Port', 'piece', 180000, 40),
-(N'TV Mainboard 4K HDR', 'piece', 1400000, 4),
-(N'TV LED Backlight Strip Kit', 'set', 950000, 7),
-(N'Printer Printhead Nozzle', 'piece', 780000, 9),
-(N'Printer Ink Cartridge Pack', 'pack', 520000, 14),
-(N'Printer Paper Pickup Roller', 'piece', 240000, 22),
-(N'Monitor Power Supply Board', 'piece', 620000, 10),
-(N'Air Conditioner Capacitor 35uF', 'piece', 120000, 50),
-(N'Refrigerant Gas R32', 'kg', 250000, 35),
-(N'AC Inverter Control PCB', 'piece', 1350000, 5),
-(N'Washing Machine Drain Pump', 'piece', 380000, 11),
-(N'Refrigerator Defrost Thermostat', 'piece', 210000, 16);
+INSERT INTO parts (part_code, part_name, unit, price, stock_quantity) VALUES
+('RAM-DDR4-8G', N'RAM DDR4 8GB 3200MHz', 'piece', 650000, 25),
+('SSD-NVME-512G', N'SSD NVMe 512GB', 'piece', 1150000, 18),
+('BAT-NB-4C', N'Laptop Battery 4-Cell', 'piece', 950000, 12),
+('KB-NB-BL', N'Laptop Keyboard Backlit', 'piece', 450000, 15),
+('FAN-NB-MOD', N'Laptop Cooling Fan Module', 'piece', 280000, 20),
+('SCR-NB-14FHD', N'Laptop Screen 14 inch Full HD', 'piece', 1850000, 6),
+('DISP-PH-OLED', N'OLED Phone Display Assembly', 'piece', 2500000, 8),
+('BAT-PH-LIPO', N'Smartphone Battery Li-Po', 'piece', 450000, 30),
+('PORT-USBC-CHG', N'USB Type-C Charging Port', 'piece', 180000, 40),
+('MB-TV-4KHDR', N'TV Mainboard 4K HDR', 'piece', 1400000, 4),
+('LED-TV-BLS', N'TV LED Backlight Strip Kit', 'set', 950000, 7),
+('NOZ-PRN-HEAD', N'Printer Printhead Nozzle', 'piece', 780000, 9),
+('INK-PRN-CART', N'Printer Ink Cartridge Pack', 'pack', 520000, 14),
+('ROL-PRN-PPR', N'Printer Paper Pickup Roller', 'piece', 240000, 22),
+('PSU-MON-BRD', N'Monitor Power Supply Board', 'piece', 620000, 10),
+('CAP-AC-35UF', N'Air Conditioner Capacitor 35uF', 'piece', 120000, 50),
+('GAS-AC-R32', N'Refrigerant Gas R32', 'kg', 250000, 35),
+('PCB-AC-INV', N'AC Inverter Control PCB', 'piece', 1350000, 5),
+('PMP-WM-DRN', N'Washing Machine Drain Pump', 'piece', 380000, 11),
+('THM-RF-DEF', N'Refrigerator Defrost Thermostat', 'piece', 210000, 16);
 GO
 
 -- 6.4. Seed Devices (20 rows)
-INSERT INTO devices (customer_id, device_name, device_type, brand, serial_number, is_under_warranty, warranty_expiry_date) VALUES
-(1, N'Dell Inspiron 15 3520', 'Laptop', 'Dell', 'DL3520A1001', 0, '2025-03-15'),
-(2, N'Asus VivoBook 14 X1404', 'Laptop', 'Asus', 'AS1404B2002', 1, '2027-11-20'),
-(3, N'HP Pavilion 15 eg2081', 'Laptop', 'HP', 'HP15EG3003', 0, '2025-09-10'),
-(4, N'Lenovo IdeaPad Slim 3', 'Laptop', 'Lenovo', 'LN3SLM4004', 1, '2027-02-05'),
-(5, N'Acer Aspire 5 A515', 'Laptop', 'Acer', 'AC515A5005', 0, '2025-06-30'),
-(6, N'iPhone 13 128GB', 'Phone', 'Apple', 'IP13F6006', 1, '2027-12-01'),
-(7, N'Samsung Galaxy S22', 'Phone', 'Samsung', 'SS22R7007', 0, '2025-04-18'),
-(8, N'Xiaomi Redmi Note 11', 'Phone', 'Xiaomi', 'XM11N8008', 0, '2025-01-25'),
-(9, N'OPPO Reno8 5G', 'Phone', 'OPPO', 'OP8R59009', 1, '2027-10-12'),
-(10, N'iPhone 12 64GB', 'Phone', 'Apple', 'IP12F1010', 0, '2024-10-09'),
-(11, N'iPad Gen 9 10.2 inch', 'Tablet', 'Apple', 'IPD9G1111', 0, '2026-05-22'),
-(12, N'Epson L3210 Ink Tank', 'Printer', 'Epson', 'EP3210L1212', 0, '2026-08-08'),
-(13, N'HP LaserJet M111a', 'Printer', 'HP', 'HPM111A1313', 0, '2025-12-03'),
-(14, N'Samsung Smart TV 43 inch', 'TV', 'Samsung', 'SSTV43A1414', 1, '2027-01-15'),
-(15, N'LG OLED 50 inch 4K', 'TV', 'LG', 'LGTV50B1515', 0, '2026-07-19'),
-(16, N'Dell UltraSharp U2422H', 'Monitor', 'Dell', 'DLU2422H1616', 1, '2027-03-30'),
-(17, N'Daikin Inverter 1HP', 'Air Conditioner', 'Daikin', 'DKN1HP1717', 0, '2025-11-11'),
-(18, N'Panasonic Inverter 1.5HP', 'Air Conditioner', 'Panasonic', 'PNS15HP1818', 0, '2026-09-25'),
-(1, N'LG Inverter 9kg Direct Drive', 'Washing Machine', 'LG', 'LGW9KG1919', 1, '2027-04-04'),
-(5, N'Panasonic NR-BX471 Refrigerator', 'Refrigerator', 'Panasonic', 'PNRBX4712020', 1, '2027-12-28');
+INSERT INTO devices (customer_id, device_name, device_type, brand, model, serial_number, is_under_warranty, warranty_expiry_date) VALUES
+(1, N'Dell Inspiron 15 3520', 'Laptop', 'Dell', 'Inspiron 15 3520', 'DL3520A1001', 0, '2025-03-15'),
+(2, N'Asus VivoBook 14 X1404', 'Laptop', 'Asus', 'VivoBook 14 X1404', 'AS1404B2002', 1, '2027-11-20'),
+(3, N'HP Pavilion 15 eg2081', 'Laptop', 'HP', 'Pavilion 15-eg2081', 'HP15EG3003', 0, '2025-09-10'),
+(4, N'Lenovo IdeaPad Slim 3', 'Laptop', 'Lenovo', 'IdeaPad Slim 3 15IAU7', 'LN3SLM4004', 1, '2027-02-05'),
+(5, N'Acer Aspire 5 A515', 'Laptop', 'Acer', 'Aspire 5 A515-57', 'AC515A5005', 0, '2025-06-30'),
+(6, N'iPhone 13 128GB', 'Phone', 'Apple', 'A2633', 'IP13F6006', 1, '2027-12-01'),
+(7, N'Samsung Galaxy S22', 'Phone', 'Samsung', 'SM-S901B', 'SS22R7007', 0, '2025-04-18'),
+(8, N'Xiaomi Redmi Note 11', 'Phone', 'Xiaomi', '2201117TG', 'XM11N8008', 0, '2025-01-25'),
+(9, N'OPPO Reno8 5G', 'Phone', 'OPPO', 'CPH2359', 'OP8R59009', 1, '2027-10-12'),
+(10, N'iPhone 12 64GB', 'Phone', 'Apple', 'A2403', 'IP12F1010', 0, '2024-10-09'),
+(11, N'iPad Gen 9 10.2 inch', 'Tablet', 'Apple', 'A2602', 'IPD9G1111', 0, '2026-05-22'),
+(12, N'Epson L3210 Ink Tank', 'Printer', 'Epson', 'EcoTank L3210', 'EP3210L1212', 0, '2026-08-08'),
+(13, N'HP LaserJet M111a', 'Printer', 'HP', 'LaserJet M111a', 'HPM111A1313', 0, '2025-12-03'),
+(14, N'Samsung Smart TV 43 inch', 'TV', 'Samsung', 'UA43AU7002', 'SSTV43A1414', 1, '2027-01-15'),
+(15, N'LG OLED 50 inch 4K', 'TV', 'LG', 'OLED48C2PSA', 'LGTV50B1515', 0, '2026-07-19'),
+(16, N'Dell UltraSharp U2422H', 'Monitor', 'Dell', 'UltraSharp U2422H', 'DLU2422H1616', 1, '2027-03-30'),
+(17, N'Daikin Inverter 1HP', 'Air Conditioner', 'Daikin', 'FTKB25XVMV', 'DKN1HP1717', 0, '2025-11-11'),
+(18, N'Panasonic Inverter 1.5HP', 'Air Conditioner', 'Panasonic', 'CU/CS-PU12XKH-8M', 'PNS15HP1818', 0, '2026-09-25'),
+(1, N'LG Inverter 9kg Direct Drive', 'Washing Machine', 'LG', 'FV1409S4W', 'LGW9KG1919', 1, '2027-04-04'),
+(5, N'Panasonic NR-BX471 Refrigerator', 'Refrigerator', 'Panasonic', 'NR-BX471GPKV', 'PNRBX4712020', 1, '2027-12-28');
 GO
 
 -- 6.5. Seed Tickets (20 rows)

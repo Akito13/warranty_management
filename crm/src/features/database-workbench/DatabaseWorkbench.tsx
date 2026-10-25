@@ -45,7 +45,7 @@ export const DatabaseWorkbench: React.FC = () => {
       id: 'triggers',
       label: 'Kiểm Thử Trigger',
       icon: '🛡️',
-      badge: '7 Triggers',
+      badge: '5 Triggers',
       desc: 'Kích hoạt sự kiện kiểm thử độc lập: kiểm tra chặn rollback & tự động cập nhật',
     },
   ];

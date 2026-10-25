@@ -34,6 +34,7 @@ import { TriggersModule } from '@/modules/triggers/triggers.module';
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['.env', '../.env', '.env.local', '../.env.local'],
       load: [appConfig, databaseConfig, corsConfig],
     }),
 
